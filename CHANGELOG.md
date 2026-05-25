@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v13.2] — 2026-05-10
+
+Internal refactor patch — no new gameplay features. Stabilises three patterns from a senior-review pass: a recurring modal click bug, per-question allocation churn, and synchronous localStorage writes on the render loop.
+
+### Changed
+- **Modal pattern consolidated.** Replaced two ad-hoc `pointer-events: auto` rules on `#pause-overlay` and `#unlock-celebration` with a single shared selector: `#hud [role="dialog"] { pointer-events: auto }`. Both overlays gained `role="dialog"` + `aria-modal="true"` + `aria-label` — semantic + accessibility win. Future modals inside `#hud` inherit the click-fix automatically (stops the bug pattern at its source).
+- **Gate pool.** Pre-build 3 reusable gate shells at startup instead of allocating fresh `Three.Mesh` + materials + a 256×256 canvas + GPU texture upload per question. `setupGate()` mutates the pool's materials and canvas in place; `clearGates()` hides instead of removing from the scene. Saves ~10 allocations + 1 GPU texture upload per question.
+- **`persistAsync` helper.** Wraps `Settings.save()` (5 writes per toggle) and `maybeUpdateBest()`'s best-score write (fires after every correct answer on a best run) in `requestIdleCallback` with a `setTimeout` fallback for older Safari. Pushes localStorage hitches off the render loop.
+
+### Verified clean
+- **Frame-rate independence audit** — no animations use raw frame counts. Every per-frame mutation routes through `dt`, `rawDt`, or accumulated `time`. 120 Hz displays should match 60 Hz pacing exactly.
+
+---
+
 ## [v13.1] — 2026-05-10
 
 Polish patch on top of v13. Speed Mode gains a Faster tier, wingmate contrails finally look like contrails, and the v13 regression that hid most in-game icons is fixed.

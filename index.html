@@ -1,8 +1,29 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v13.1)
+  TOP SUM · Math Flight (v13.2)
   ------------------------------------------------------------
+  v13.2 changes (internal — no new gameplay features):
+    ARCHITECTURE / CODE QUALITY:
+    · Modal pattern consolidated. Replaced two ad-hoc
+      "pointer-events: auto" rules on #pause-overlay and
+      #unlock-celebration with a single shared selector:
+      "#hud [role='dialog'] { pointer-events: auto }". Both
+      overlays gained role="dialog" + aria-modal + aria-label —
+      semantic + accessibility win, future modals inside #hud
+      inherit the click-fix automatically.
+    · Gate pool. Pre-build 3 reusable gate shells at startup
+      instead of allocating 3 fresh Three.Mesh + materials +
+      a 256×256 canvas + GPU texture per question. setupGate()
+      mutates the pool shell's materials/canvas in place,
+      clearGates() hides instead of removing from the scene.
+      Saves ~10 allocations + 1 texture upload per question.
+    · persistAsync helper. Wraps Settings.save() (5 writes per
+      toggle) and maybeUpdateBest()'s best-score write (fires
+      after every correct answer on a best run) in
+      requestIdleCallback with setTimeout fallback. Pushes
+      localStorage hitches off the render loop.
+
   v13.1 changes:
     SPEED MODE — 3-STATE TIER:
     · Speed Mode upgraded from a 2-state toggle to a 3-state cycle:
@@ -288,6 +309,10 @@
   }
   canvas { display: block; touch-action: none; }
   #hud { position: absolute; inset: 0; pointer-events: none; }
+  /* v13.2: any dialog-role overlay inside #hud opts back into pointer events
+     so its buttons receive clicks. Stops the recurring "modal-buttons-not-
+     clickable" bug pattern at its source. */
+  #hud [role="dialog"] { pointer-events: auto; }
 
   /* === BOOT SCREEN === */
   #boot {
@@ -1226,8 +1251,6 @@
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     z-index: 200; display: none;
     align-items: center; justify-content: center;
-    /* #hud is pointer-events: none — opt back in so buttons receive clicks. */
-    pointer-events: auto;
   }
   #pause-overlay.show { display: flex; }
   .pause-card {
@@ -1318,8 +1341,6 @@
     backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
     z-index: 220; display: none;
     align-items: center; justify-content: center;
-    /* #hud is pointer-events: none — opt back in so the Try / Later buttons receive clicks. */
-    pointer-events: auto;
   }
   #unlock-celebration.show { display: flex; }
   .unlock-card {
@@ -1743,7 +1764,7 @@
     </div>
   </div>
 
-  <div id="pause-overlay">
+  <div id="pause-overlay" role="dialog" aria-modal="true" aria-label="Paused">
     <div class="pause-card">
       <h3>PAUSED</h3>
       <button class="diff-btn" id="pause-resume">Resume</button>
@@ -1763,7 +1784,7 @@
     </div>
   </div>
 
-  <div id="unlock-celebration">
+  <div id="unlock-celebration" role="dialog" aria-modal="true" aria-label="Unlock celebration">
     <div class="uc-rays" aria-hidden="true"></div>
     <div class="unlock-card">
       <div class="uc-icon-wrap"><div id="uc-icon">🌅</div></div>
@@ -1807,6 +1828,16 @@
   const joy = { x: 0, y: 0 };
 
   // === SETTINGS ===
+  // v13.2: Push non-critical persistence off the render loop. localStorage
+  // writes block the main thread (<1ms but adds up on mid-tier Android during
+  // high-frequency events). requestIdleCallback queues for next idle slot;
+  // setTimeout fallback covers older Safari (<17).
+  const persistAsync = (fn) => {
+    const ric = window.requestIdleCallback;
+    if (ric) ric(fn, { timeout: 2000 });
+    else setTimeout(fn, 0);
+  };
+
   // v13.1: Speed Mode is now a 3-state tier — 0 = Off, 1 = Fast (1.5×),
   // 2 = Faster (1.85×). Caps at 1.85 to stay under the read-time cliff for
   // hard math at full Flow ×4 + ZOOOM stacking.
@@ -1862,13 +1893,23 @@
       applyTimeOfDay();
     },
     save() {
-      try {
-        localStorage.setItem('topsum_autoCenter', this.autoCenter ? '1' : '0');
-        localStorage.setItem('topsum_sound', this.sound ? '1' : '0');
-        localStorage.setItem('topsum_control', this.control);
-        localStorage.setItem('topsum_time', this.timeOfDay);
-        localStorage.setItem('topsum_speedmode', String(this.speedMode | 0));
-      } catch (e) {}
+      // v13.2: capture current values now, write during next idle slot.
+      const snapshot = {
+        autoCenter: this.autoCenter ? '1' : '0',
+        sound:      this.sound ? '1' : '0',
+        control:    this.control,
+        time:       this.timeOfDay,
+        speedmode:  String(this.speedMode | 0)
+      };
+      persistAsync(() => {
+        try {
+          localStorage.setItem('topsum_autoCenter', snapshot.autoCenter);
+          localStorage.setItem('topsum_sound',      snapshot.sound);
+          localStorage.setItem('topsum_control',    snapshot.control);
+          localStorage.setItem('topsum_time',       snapshot.time);
+          localStorage.setItem('topsum_speedmode',  snapshot.speedmode);
+        } catch (e) {}
+      });
     },
     applyControl() {
       document.body.classList.toggle('ctrl-joystick', this.control === 'joystick');
@@ -4438,28 +4479,47 @@
   }
 
   // === GATES ===
-  function makeGate(value, isCorrect) {
+  // v13.2: GATE POOL
+  // Pre-build 3 reusable gate shells at startup rather than allocating fresh
+  // meshes/materials/textures per question. Saves ~3 mesh + 3 material + 1
+  // canvas + 1 texture allocations per question, eliminates the 256×256 GPU
+  // texture upload on every spawn. The shell shape (torus + disk + light) is
+  // identical for every gate; only the digit text + colour scheme + correctness
+  // flag change between uses, and those are mutated in place via setupGate().
+  const _gateRingGeo    = new THREE.TorusGeometry(7.5, 0.55, 8, 28);
+  const _gateOutlineGeo = new THREE.TorusGeometry(7.5, 0.10, 6, 28);
+  const _gateDiskGeo    = new THREE.CircleGeometry(7, 28);
+  function buildGateShell() {
     const g = new THREE.Group();
-    const sch = timeAware.gateScheme;
-    const assistGlow = isCorrect && !onboarded;
-    const ringMat = new THREE.MeshPhongMaterial({
-      color: assistGlow ? 0xffd24d : sch.ringColor,
-      emissive: assistGlow ? 0xff9911 : sch.ringEmissive,
-      emissiveIntensity: assistGlow ? 0.6 : sch.ringEmissiveIntensity,
-      shininess: 80
-    });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(7.5, 0.55, 8, 28), ringMat);
+    const ringMat = new THREE.MeshPhongMaterial({ shininess: 80 });
+    const ring = new THREE.Mesh(_gateRingGeo, ringMat);
     g.add(ring);
-    // Inner dark outline torus — preserves silhouette against any backdrop
-    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x331100 });
-    const outline = new THREE.Mesh(new THREE.TorusGeometry(7.5, 0.10, 6, 28), outlineMat);
+    const outline = new THREE.Mesh(_gateOutlineGeo,
+      new THREE.MeshBasicMaterial({ color: 0x331100 }));
     g.add(outline);
-    const disk = new THREE.Mesh(new THREE.CircleGeometry(7, 28),
-      new THREE.MeshBasicMaterial({ color: sch.diskColor, transparent: true, opacity: sch.diskOpacity, side: THREE.DoubleSide }));
+    const diskMat = new THREE.MeshBasicMaterial({
+      transparent: true, side: THREE.DoubleSide
+    });
+    const disk = new THREE.Mesh(_gateDiskGeo, diskMat);
     g.add(disk);
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+    sprite.scale.set(9, 9, 1);
+    g.add(sprite);
+    const light = new THREE.PointLight(0xffffff, 0.8, 20);
+    g.add(light);
+    g.visible = false;
+    g.userData = { ring };  // flashGate/assist glow read this
+    return { group: g, ring, ringMat, diskMat, sprite, canvas, ctx, tex, light };
+  }
+  const gatePool = [buildGateShell(), buildGateShell(), buildGateShell()];
+  gatePool.forEach(gp => scene.add(gp.group));
+
+  function paintGateDigit(ctx, value) {
+    ctx.clearRect(0, 0, 256, 256);
     ctx.fillStyle = 'rgba(40, 22, 0, 0.6)';
     ctx.beginPath(); ctx.arc(128, 128, 92, 0, Math.PI * 2); ctx.fill();
     ctx.font = 'bold 150px "Arial Black", Arial, sans-serif';
@@ -4468,14 +4528,23 @@
     ctx.strokeText(String(value), 128, 138);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(String(value), 128, 138);
-    const tex = new THREE.CanvasTexture(canvas);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-    sprite.scale.set(9, 9, 1);
-    g.add(sprite);
-    const light = new THREE.PointLight(sch.lightColor, 0.8, 20);
-    g.add(light);
-    g.userData = { value, ring, assistGlow };
-    return g;
+  }
+
+  function setupGate(gp, value, isCorrect) {
+    const sch = timeAware.gateScheme;
+    const assistGlow = isCorrect && !onboarded;
+    gp.ringMat.color.setHex(assistGlow ? 0xffd24d : sch.ringColor);
+    gp.ringMat.emissive.setHex(assistGlow ? 0xff9911 : sch.ringEmissive);
+    gp.ringMat.emissiveIntensity = assistGlow ? 0.6 : sch.ringEmissiveIntensity;
+    gp.diskMat.color.setHex(sch.diskColor);
+    gp.diskMat.opacity = sch.diskOpacity;
+    gp.light.color.setHex(sch.lightColor);
+    paintGateDigit(gp.ctx, value);
+    gp.tex.needsUpdate = true;
+    gp.group.userData.value = value;
+    gp.group.userData.assistGlow = assistGlow;
+    gp.group.visible = true;
+    return gp.group;
   }
   function spawnGatesAhead() {
     // Base lookahead: 0.09 of pathLength (~210m) — gives the player ~5s of
@@ -4507,12 +4576,12 @@
     const gates = [];
     for (let i = 0; i < 3; i++) {
       const isCorrect = game.question.options[i] === game.question.answer;
-      const gate = makeGate(game.question.options[i], isCorrect);
+      // v13.2: reuse pre-allocated gate shells instead of fresh meshes/materials.
+      const gate = setupGate(gatePool[i], game.question.options[i], isCorrect);
       gate.position.copy(frame.pos).add(frame.right.clone().multiplyScalar(offsets[i]));
       gate.lookAt(gate.position.clone().add(frame.tan));
       gate.userData.xoff = offsets[i];
       gate.userData.gateT = gateT;
-      scene.add(gate);
       gates.push(gate);
     }
     game.question.gates = gates;
@@ -4520,9 +4589,9 @@
     game.answered = false;
   }
   function clearGates() {
-    if (game.question && game.question.gates) {
-      game.question.gates.forEach(g => scene.remove(g));
-    }
+    // v13.2: hide pooled gates instead of removing them from the scene.
+    // (Iterates the pool directly — game.question may be stale after a reset.)
+    gatePool.forEach(gp => { gp.group.visible = false; });
   }
   function newQuestion() {
     clearGates();
@@ -4563,7 +4632,12 @@
   function maybeUpdateBest() {
     if (game.score > game.bestScore) {
       game.bestScore = game.score;
-      try { localStorage.setItem('topsum_best', game.bestScore); } catch(e){}
+      // v13.2: persist off the render loop. Capture the value now in case
+      // it changes again before the idle callback fires.
+      const best = game.bestScore;
+      persistAsync(() => {
+        try { localStorage.setItem('topsum_best', best); } catch(e){}
+      });
       // Check for newly-crossed unlock thresholds
       UNLOCK_LADDER.forEach(u => {
         if (game.bestScore >= u.threshold && !unlocks[u.id]) {
