@@ -1,8 +1,38 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v13.2)
+  TOP SUM · Math Flight (v14)
   ------------------------------------------------------------
+  v14 changes:
+    URL CHALLENGE — ASYNC MULTIPLAYER WITHOUT A BACKEND:
+    · Each flight now runs on a uint32 seed. Question generation
+      routes through a swappable `questionRng` — Math.random in
+      normal play, a Mulberry32 PRNG seeded from the URL in
+      Challenge mode. Both players get the SAME questions in
+      the SAME order.
+    · After any flight, "🎯 Share Challenge" produces a URL like
+      https://mli3w.github.io/top-sum/?c=<seed>-<level>-<score>
+      (compact base-36 encoding, ~12 chars). Recipient opens the
+      link, taps "Take the challenge", plays the exact same
+      flight, and gets a head-to-head comparison at game over.
+    · Title screen surfaces an incoming challenge via a pulsing
+      magenta banner: "🎯 CHALLENGE INCOMING — same questions,
+      beat <score> on <level>". Two buttons: Take Challenge /
+      Skip (the latter strips ?c from the URL so refresh doesn't
+      re-surface it).
+    · Game-over panel shows a head-to-head "vs" block when the
+      flight was a challenge — You vs Challenger scores with a
+      verdict line (won / beaten / tied). The Share Challenge
+      button is always present so any flight can be challenged
+      forward.
+    · Fly Again preserves challenge mode on retry — same seed,
+      same questions. Without this, a lost challenge would
+      silently become a fresh-seed flight, breaking the rematch
+      loop.
+    · Zero backend, zero accounts, zero data leaves the device.
+      The "social graph" lives entirely in whoever's texting
+      whom the link, the same way kids already share things.
+
   v13.2 changes (internal — no new gameplay features):
     ARCHITECTURE / CODE QUALITY:
     · Modal pattern consolidated. Replaced two ad-hoc
@@ -1377,6 +1407,129 @@
     background: rgba(255, 200, 80, 0.12);
   }
 
+  /* === v14: GAME-OVER VS BLOCK + SHARE-CHALLENGE BUTTON === */
+  #vs-block {
+    margin: clamp(8px, 2vw, 14px) auto clamp(12px, 3vw, 18px);
+    padding: clamp(10px, 2.5vw, 16px) clamp(16px, 3.5vw, 24px);
+    border: 1.5px dashed rgba(255, 80, 180, 0.7);
+    border-radius: 12px;
+    background:
+      radial-gradient(ellipse at center, rgba(255, 80, 180, 0.10) 0%, transparent 70%),
+      rgba(20, 8, 30, 0.55);
+    box-shadow: 0 0 22px rgba(255, 80, 180, 0.30);
+    max-width: 360px;
+    text-align: center;
+  }
+  .vs-headline {
+    font-family: 'Arial Black', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(13px, 3vw, 18px);
+    letter-spacing: clamp(2px, 0.7vw, 4px);
+    color: #ffe5f5;
+    text-shadow: 0 0 12px rgba(255, 100, 200, 0.8);
+    margin-bottom: clamp(8px, 1.6vw, 12px);
+  }
+  .vs-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 4px clamp(4px, 1vw, 8px);
+    font-size: clamp(13px, 2.6vw, 16px);
+    color: #ffd9ee;
+    letter-spacing: 1px;
+  }
+  .vs-row b {
+    color: #ffffff;
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: 900;
+  }
+  .vs-verdict {
+    margin-top: clamp(6px, 1.4vw, 10px);
+    font-family: 'Arial Black', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(14px, 3.2vw, 19px);
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 0 14px rgba(255, 120, 210, 0.9);
+  }
+  .vs-verdict.won  { color: #b6ffb6; text-shadow: 0 0 16px rgba(120, 255, 140, 0.9); }
+  .vs-verdict.lost { color: #ff9aa6; text-shadow: 0 0 16px rgba(255, 100, 120, 0.8); }
+
+  .ch-share-btn {
+    border-color: #ff5cb3 !important;
+    color: #ffe5f5 !important;
+    background: rgba(255, 80, 180, 0.14);
+    box-shadow: 0 0 12px rgba(255, 100, 200, 0.35);
+  }
+  .ch-share-btn:active,
+  .ch-share-btn:hover {
+    background: rgba(255, 100, 200, 0.26);
+    box-shadow: 0 0 22px rgba(255, 120, 210, 0.65);
+  }
+
+  /* === v14: CHALLENGE BANNER === */
+  #challenge-banner {
+    margin: clamp(8px, 2vw, 14px) 0;
+    padding: clamp(10px, 2.5vw, 16px) clamp(14px, 3vw, 22px);
+    border: 1.5px dashed rgba(255, 80, 180, 0.7);
+    border-radius: 12px;
+    background:
+      radial-gradient(ellipse at center, rgba(255, 80, 180, 0.10) 0%, transparent 70%),
+      rgba(20, 8, 30, 0.55);
+    box-shadow: 0 0 24px rgba(255, 80, 180, 0.30);
+    text-align: center;
+    max-width: 460px;
+    animation: chBannerPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes chBannerPulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(255, 80, 180, 0.25); border-color: rgba(255, 80, 180, 0.6); }
+    50%      { box-shadow: 0 0 32px rgba(255, 80, 180, 0.55); border-color: rgba(255, 140, 220, 0.95); }
+  }
+  #challenge-banner .challenge-headline {
+    font-family: 'Arial Black', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(16px, 3.8vw, 22px);
+    letter-spacing: clamp(2px, 0.8vw, 4px);
+    color: #ffe5f5;
+    text-shadow: 0 0 14px rgba(255, 100, 200, 0.85);
+    margin-bottom: 6px;
+  }
+  #challenge-banner .challenge-subtext {
+    font-size: clamp(11px, 2.4vw, 14px);
+    color: #ffd9ee;
+    opacity: 0.95;
+    letter-spacing: 1px;
+    margin-bottom: clamp(10px, 2.2vw, 14px);
+    line-height: 1.5;
+  }
+  #challenge-banner .challenge-subtext b { color: #ffffff; }
+  #challenge-banner .challenge-buttons {
+    display: flex;
+    gap: clamp(8px, 2vw, 14px);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  #challenge-banner .ch-accept {
+    border-color: #ff5cb3 !important;
+    color: #ffe5f5 !important;
+    background: rgba(255, 80, 180, 0.16);
+    box-shadow: 0 0 16px rgba(255, 100, 200, 0.45);
+  }
+  #challenge-banner .ch-accept:active,
+  #challenge-banner .ch-accept:hover {
+    background: rgba(255, 100, 200, 0.28);
+    box-shadow: 0 0 24px rgba(255, 120, 210, 0.7);
+  }
+  #challenge-banner .ch-skip {
+    opacity: 0.8;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #challenge-banner { animation: none; }
+  }
+
   /* === v11: TITLE-SCREEN UNLOCK HINT === */
   .title-unlock-hint {
     color: #f7c948; font-size: clamp(11px, 2.5vw, 14px);
@@ -1710,6 +1863,18 @@
     <div class="best-pill" id="title-best">★ BEST: 0</div>
     <div class="title-unlock-hint" id="title-unlock-hint" style="display:none"></div>
 
+    <!-- v14: Challenge banner — only visible when ?c=... URL param was decoded. -->
+    <div id="challenge-banner" style="display:none">
+      <div class="challenge-headline">🎯 CHALLENGE INCOMING</div>
+      <div class="challenge-subtext">
+        Same questions. Same order. Beat <b id="ch-score">0</b> on <b id="ch-level">—</b>.
+      </div>
+      <div class="challenge-buttons">
+        <button class="diff-btn ch-accept" id="ch-accept">Take the challenge</button>
+        <button class="diff-btn ch-skip"   id="ch-skip">Skip · just play</button>
+      </div>
+    </div>
+
     <div class="diff-row">
       <button class="diff-btn tiny" onclick="startGame(1)">Tiny<small>1+1 → 5+5</small></button>
       <button class="diff-btn"      onclick="startGame(2)">Easy<small>+</small></button>
@@ -1753,12 +1918,21 @@
   <div id="gameover">
     <h2>FLIGHT OVER</h2>
     <div class="new-best" id="new-best">★ NEW BEST! ★</div>
+    <!-- v14: head-to-head comparison — only visible when finishing a challenge flight. -->
+    <div id="vs-block" style="display:none">
+      <div class="vs-headline" id="vs-headline">🎯 CHALLENGE RESULT</div>
+      <div class="vs-row"><span>You</span><b id="vs-you">0</b></div>
+      <div class="vs-row"><span id="vs-them-label">Challenger</span><b id="vs-them">0</b></div>
+      <div class="vs-verdict" id="vs-verdict">—</div>
+    </div>
     <div class="score-line">Final Score: <b id="go-score">0</b></div>
     <div class="score-line">Best Score: <b id="go-best">0</b></div>
     <div class="score-line">Best Streak: <b id="go-streak">0</b></div>
     <div class="score-line">Correct Answers: <b id="go-correct">0</b></div>
     <div class="go-buttons">
       <button class="diff-btn share-btn" onclick="shareScore()">Share Score</button>
+      <!-- v14: Share Challenge — sends a friend the exact questions you just played. -->
+      <button class="diff-btn ch-share-btn" onclick="shareChallenge()">🎯 Share Challenge</button>
       <button class="diff-btn" onclick="restartFlight()">Fly Again</button>
       <button class="diff-btn" onclick="goToMenu()">Menu</button>
     </div>
@@ -3391,7 +3565,10 @@
     zoomStartPathT: 0,       // pathT at moment of activation (for one-lap detection)
     zoomLapDone: false,      // flips true once we've crossed the start point again
     zoomPending: false,      // true if tapped mid-question; auto-fires on answer
-    zoomFireworkTimer: 0     // countdown to next firework during ZOOOM
+    zoomFireworkTimer: 0,    // countdown to next firework during ZOOOM
+    // v14: Challenge mode
+    flightSeed: 0,           // seed driving question RNG this flight (uint32)
+    activeChallenge: null    // { seed, level, score } if playing someone's challenge
   };
   const SPEEDS = { 1: 22, 2: 30, 3: 36, 4: 44 };
   const LEVEL_NAMES = { 1: 'Tiny', 2: 'Easy', 3: 'Medium', 4: 'Hard' };
@@ -3435,6 +3612,36 @@
     }
   }
   renderUnlockHint();
+
+  // v14: Show the challenge banner on the title screen if an incoming
+  // challenge URL was decoded at load. Wire the two buttons here too —
+  // Take Challenge enters challenge mode at the challenger's difficulty,
+  // Skip clears the challenge and lets the player pick a normal flight.
+  function renderChallengeBanner() {
+    const banner = document.getElementById('challenge-banner');
+    if (!banner) return;
+    if (!incomingChallenge) { banner.style.display = 'none'; return; }
+    document.getElementById('ch-score').textContent = incomingChallenge.score;
+    document.getElementById('ch-level').textContent = LEVEL_NAMES[incomingChallenge.level] || ('Level ' + incomingChallenge.level);
+    banner.style.display = 'block';
+  }
+  document.getElementById('ch-accept').addEventListener('click', () => {
+    if (!incomingChallenge) return;
+    Sound.click();
+    startGame(incomingChallenge.level, true);
+  });
+  document.getElementById('ch-skip').addEventListener('click', () => {
+    Sound.click();
+    incomingChallenge = null;
+    document.getElementById('challenge-banner').style.display = 'none';
+    // Strip the URL so reloading or "Back to menu" doesn't re-surface it.
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete('c');
+      history.replaceState(null, '', u.toString());
+    } catch (e) {}
+  });
+  renderChallengeBanner();
 
   // === v11: MOBILE CONTROL TIP ===
   // First-time visit on a touch device: show a one-shot tip pointing at the
@@ -4449,8 +4656,53 @@
   document.getElementById('pause-menu').addEventListener('click', () => { Sound.click(); closePauseOverlay(); backToMenu(); });
 
   // === MATH ===
-  const randInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
-  const shuffle = arr => arr.slice().sort(() => Math.random() - 0.5);
+  // v14: Question generation runs on a swappable RNG. In normal play it's
+  // Math.random (non-deterministic). In Challenge mode it's a Mulberry32
+  // PRNG seeded from the URL, so both players get the same sequence of
+  // questions in the same order — the head-to-head is pure skill, not luck.
+  let questionRng = Math.random;
+  function makeSeededRng(seed) {
+    let s = seed >>> 0;
+    return function() {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function setQuestionSeed(seed) {
+    questionRng = (seed === null || seed === undefined) ? Math.random : makeSeededRng(seed);
+  }
+
+  // v14: Challenge URL codec. Encodes { seed, level, score } as three
+  // base-36 fields joined by hyphens — short enough for iMessage previews
+  // (typical ~12 chars), URL-safe, no JSON needed.
+  function encodeChallenge(seed, level, score) {
+    return (seed >>> 0).toString(36) + '-' + (level | 0).toString(36) + '-' + (score | 0).toString(36);
+  }
+  function decodeChallenge(str) {
+    if (!str || typeof str !== 'string') return null;
+    const parts = str.split('-');
+    if (parts.length !== 3) return null;
+    const seed  = parseInt(parts[0], 36);
+    const level = parseInt(parts[1], 36);
+    const score = parseInt(parts[2], 36);
+    if (!Number.isFinite(seed) || !Number.isFinite(level) || !Number.isFinite(score)) return null;
+    if (level < 1 || level > 4) return null;
+    if (score < 0 || score > 1e6) return null;
+    return { seed: seed >>> 0, level, score };
+  }
+  // Read the incoming challenge once at load. Stays in module scope —
+  // the title-screen UI surfaces it and startGame() picks it up.
+  let incomingChallenge = null;
+  try {
+    const params = new URLSearchParams(location.search);
+    const c = params.get('c');
+    if (c) incomingChallenge = decodeChallenge(c);
+  } catch (e) {}
+  const randInt  = (lo, hi) => lo + Math.floor(questionRng() * (hi - lo + 1));
+  const shuffle  = arr => arr.slice().sort(() => questionRng() - 0.5);
   function generateQuestion() {
     const lvl = game.level;
     let a, b, op, answer;
@@ -4459,10 +4711,10 @@
     } else if (lvl === 2) {
       a = randInt(1, 10); b = randInt(1, 10); op = '+'; answer = a + b;
     } else if (lvl === 3) {
-      if (Math.random() < 0.5) { a = randInt(5, 20); b = randInt(1, 15); op = '+'; answer = a + b; }
+      if (questionRng() < 0.5) { a = randInt(5, 20); b = randInt(1, 15); op = '+'; answer = a + b; }
       else { a = randInt(8, 25); b = randInt(1, a); op = '−'; answer = a - b; }
     } else {
-      const r = Math.random();
+      const r = questionRng();
       if (r < 0.35) { a = randInt(10, 40); b = randInt(5, 30); op = '+'; answer = a + b; }
       else if (r < 0.7) { a = randInt(15, 50); b = randInt(1, a); op = '−'; answer = a - b; }
       else { a = randInt(2, 12); b = randInt(2, 10); op = '×'; answer = a * b; }
@@ -4471,7 +4723,7 @@
     let attempts = 0;
     while (wrongs.size < 2 && attempts++ < 30) {
       const spread = Math.max(2, Math.ceil(Math.abs(answer) * 0.3));
-      const delta = (Math.random() < 0.5 ? -1 : 1) * randInt(1, spread);
+      const delta = (questionRng() < 0.5 ? -1 : 1) * randInt(1, spread);
       const w = answer + delta;
       if (w !== answer && w >= 0) wrongs.add(w);
     }
@@ -4810,8 +5062,20 @@
     bar.classList.toggle('full', game.zoomCharge >= 1 && !game.zoomActive);
   }
 
-  function startGame(level) {
+  function startGame(level, useChallenge) {
     Sound.init(); Sound.resume(); Sound.click();
+    // v14: Decide the seed for this flight. If the player accepted an
+    // incoming challenge AND the difficulty matches, reuse the challenger's
+    // seed so both players see the same questions in the same order.
+    // Otherwise generate a fresh uint32 seed for this session.
+    if (useChallenge && incomingChallenge && incomingChallenge.level === level) {
+      game.activeChallenge = incomingChallenge;
+      game.flightSeed = incomingChallenge.seed;
+    } else {
+      game.activeChallenge = null;
+      game.flightSeed = (Math.random() * 0xFFFFFFFF) >>> 0;
+    }
+    setQuestionSeed(game.flightSeed);
     game.level = level;
     game.levelName = LEVEL_NAMES[level];
     game.flowMult = 1;
@@ -4870,6 +5134,30 @@
     document.getElementById('go-streak').textContent = game.bestStreak;
     document.getElementById('go-correct').textContent = game.totalCorrect;
     document.getElementById('new-best').classList.toggle('show', wasNewBest);
+    // v14: challenge comparison — only renders if this flight was a challenge.
+    const vs = document.getElementById('vs-block');
+    if (vs) {
+      if (game.activeChallenge) {
+        const them = game.activeChallenge.score;
+        const you  = game.score;
+        document.getElementById('vs-you').textContent  = you;
+        document.getElementById('vs-them').textContent = them;
+        const verdictEl = document.getElementById('vs-verdict');
+        verdictEl.className = 'vs-verdict';
+        if (you > them) {
+          verdictEl.textContent = '🏆 You won by ' + (you - them);
+          verdictEl.classList.add('won');
+        } else if (you < them) {
+          verdictEl.textContent = '❌ Beaten by ' + (them - you);
+          verdictEl.classList.add('lost');
+        } else {
+          verdictEl.textContent = '🤝 Exact tie!';
+        }
+        vs.style.display = 'block';
+      } else {
+        vs.style.display = 'none';
+      }
+    }
     document.getElementById('gameover').classList.add('show');
     Object.keys(keys).forEach(k => keys[k] = false);
     document.querySelectorAll('.dbtn.active').forEach(b => b.classList.remove('active'));
@@ -4881,7 +5169,13 @@
     }
   }
 
-  function restartFlight() { startGame(game.level); }
+  function restartFlight() {
+    // v14: if the just-finished flight was a challenge, "Fly Again" replays
+    // the same challenge (same seed, same questions) — that's almost always
+    // what the player wants when they lose by a few points. If it wasn't a
+    // challenge, fresh seed for a fresh random run.
+    startGame(game.level, !!game.activeChallenge);
+  }
   function goToMenu() { backToMenu(); }
   window.restartFlight = restartFlight;
   window.goToMenu = goToMenu;
@@ -4909,6 +5203,34 @@
       copyToClipboard(fullText);
     }
   }
+
+  // v14: Share a challenge — encodes seed + level + score into the URL so
+  // the recipient plays the EXACT same questions in the same order, then
+  // gets a head-to-head comparison at the end. Zero backend.
+  function shareChallenge() {
+    Sound.click();
+    if (!game.flightSeed) {
+      // Defensive: should never happen since startGame always sets a seed.
+      showToast('NO CHALLENGE TO SHARE');
+      return;
+    }
+    const code = encodeChallenge(game.flightSeed, game.level, game.score);
+    const url = 'https://mli3w.github.io/top-sum/?c=' + code;
+    const levelName = LEVEL_NAMES[game.level] || '';
+    const shortText = `🎯 I scored ${game.score} on Top Sum ${levelName} mode — same questions, can you beat me?`;
+    const fullText  = `${shortText} ${url}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'Top Sum · Challenge',
+        text: shortText,
+        url: url
+      }).catch(() => copyToClipboard(fullText));
+    } else {
+      copyToClipboard(fullText);
+    }
+  }
+  window.shareChallenge = shareChallenge;
+
   function copyToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(

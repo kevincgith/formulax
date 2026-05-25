@@ -34,6 +34,8 @@ Chain correct answers together to:
 - trigger cinematic slow-motion moments
 - unlock new flight experiences
 
+…and when you're done, **challenge a friend** with a single shareable link — same questions, same order, head-to-head at the end.
+
 It's less:
 > "solve this question"
 
@@ -110,6 +112,23 @@ For fast players who find the base pace too gentle. Three tiers, picked from the
 | ⚡⚡ Faster | 1.85× | ⚡⚡ |
 
 Caps at 1.85× so questions stay readable when stacked with Flow ×4 and ZOOOM. Picked tier persists across sessions.
+
+### 🎯 URL Challenge
+Async multiplayer with zero accounts, zero servers, zero data leaving your device.
+
+After any flight, hit **🎯 Share Challenge** to get a link like:
+
+```
+https://mli3w.github.io/top-sum/?c=k4xz9a-4-7w
+```
+
+Text it to a cousin. They tap the link, hit **Take the challenge** from the title screen, and play the **exact same questions in the exact same order** as you did. At game over, both scores appear side-by-side with a verdict:
+
+> **You: 410 · Challenger: 380 · 🏆 You won by 30**
+
+The whole match state is encoded in the URL itself — a uint32 seed plus level plus score, packed into ~12 base-36 characters. No backend, no friend list, no leaderboard. Just a link.
+
+Fly Again after losing a challenge replays the *same* questions for an immediate rematch.
 
 ### 🌆 Cinematic Marina Bay World
 - Stylised Singapore skyline (Merlion, bay, boats, water)

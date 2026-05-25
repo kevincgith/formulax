@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v14] — 2026-05-10
+
+**URL Challenge** — async multiplayer without a backend. Share a link, a friend plays the exact same questions, head-to-head at the end. Zero accounts, zero servers, zero data leaves either device.
+
+### Added
+- **URL Challenge mode.** After any flight, hit **🎯 Share Challenge** to generate a shareable link like `https://mli3w.github.io/top-sum/?c=<seed>-<level>-<score>` (compact base-36 encoding, ~12 chars — fits cleanly in iMessage previews). Recipient opens the URL, taps **Take the challenge** from the title-screen banner, and plays the *exact same questions in the exact same order*. At game over, both scores appear side-by-side with a verdict.
+- **Seedable question RNG.** Question generation now routes through a swappable `questionRng` — `Math.random` for normal play, a Mulberry32 PRNG seeded from the URL in Challenge mode. Both players see identical sequences.
+- **Title-screen challenge banner.** Pulsing magenta panel when an incoming challenge is detected. Two buttons: Take Challenge (enters challenge mode at the challenger's difficulty) or Skip (strips `?c=` from the URL so refresh doesn't re-surface it).
+- **Head-to-head game-over comparison.** When the flight was a challenge, a `vs` block appears above the score lines: *You / Challenger / verdict* (🏆 won, ❌ beaten, 🤝 tied).
+- **Share Challenge button on every flight.** Even normal-mode runs can be sent as a challenge — encodes whatever seed that flight was running on.
+
+### Changed
+- **Fly Again preserves challenge mode.** If the just-finished flight was a challenge, "Fly Again" replays the *same* questions for a rematch. Without this, a lost challenge would silently become a fresh-seed flight, breaking the natural "I was so close, let me try again" loop.
+
+### How it works (no servers)
+The entire "match state" is encoded in the URL itself. `seed.toString(36) + '-' + level + '-' + score.toString(36)`. The recipient's game decodes the URL on load, locks the difficulty and seed, and the Mulberry32 PRNG deterministically reproduces the question sequence. The verdict at the end is local — both players' devices independently know the result without ever communicating with a server.
+
+---
+
 ## [v13.2] — 2026-05-10
 
 Internal refactor patch — no new gameplay features. Stabilises three patterns from a senior-review pass: a recurring modal click bug, per-question allocation churn, and synchronous localStorage writes on the render loop.
