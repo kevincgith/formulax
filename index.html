@@ -2353,13 +2353,18 @@
   // fires the first applyTimeOfDay) so the function can guard on them safely.
   let trafficPts = null, trafficDayMat = null, trafficNightMat = null;
   let warnBeaconMat = null, warnBeaconGeo = null;
+  let garlandPts = null;   // Part D3: shoreline light garland
   let _lastFestive = false;
 
   function applyTimeOfDay() {
     const sunset = Settings.timeOfDay === 'sunset';
     if (sunset) {
-      skyMat.uniforms.topColor.value.setHex(0x4a3868);
-      skyMat.uniforms.bottomColor.value.setHex(0xff8855);
+      // D5: tuned against the dusk reference photos — horizon pulled toward
+      // golden-amber (old 0xff8855 blended with 0xffb066), upper sky toward
+      // purple-magenta (old 0x4a3868 blended with 0x6a4a8c). A nudge, not a
+      // repaint: halfway between the v14 values and the photo targets.
+      skyMat.uniforms.topColor.value.setHex(0x5a417a);
+      skyMat.uniforms.bottomColor.value.setHex(0xff9c5d);
       sun.color.setHex(0xff9966);
       sun.intensity = 0.7;
       ambient.color.setHex(0x6a4a6a);
@@ -2432,6 +2437,12 @@
     timeAware.facadeMaterials.forEach(m => {
       m.emissiveIntensity = (sunset ? 0.85 : 0.12) * (m.userData.emiScale || 1);
     });
+    // D5: the blue-hour reference photo leads with the lit Esplanade domes —
+    // give the spiky shells a faint golden glow at dusk, dead off by day.
+    if (timeAware.esplanadeShellMat) {
+      timeAware.esplanadeShellMat.emissive.setHex(0xffaa44);
+      timeAware.esplanadeShellMat.emissiveIntensity = sunset ? 0.25 : 0;
+    }
     // C5: traffic reads as dark specks by day, additive light streams at dusk
     if (trafficPts) {
       trafficPts.material = sunset ? trafficNightMat : trafficDayMat;
@@ -2439,6 +2450,10 @@
     // C7: festive flip — repaint the facade canvases and beacon colors once
     // per toggle (not per call), then let the tick functions take it from here
     const fest = window.festiveActive();
+    // D3: shoreline garland — the glowing promenade rim that every dusk
+    // reference photo leads with. On at sunset, on when festive (National
+    // Day mode re-calls _applyTimeOfDay), invisible in plain daylight.
+    if (garlandPts) garlandPts.visible = sunset || fest;
     if (fest !== _lastFestive) {
       _lastFestive = fest;
       if (window._regenFacades) window._regenFacades();
@@ -2705,6 +2720,37 @@
   }
   initTraffic();
 
+  // === D3: SHORELINE LIGHT GARLAND ===
+  // Every dusk reference photo has one feature in common: a warm glowing rim
+  // of promenade lights tracing the bay. One Points string, sampled every
+  // ~6 units along a CatmullRom through the same shoreline waypoints the
+  // walking paths (and traffic route 2) already follow — civic rim down the
+  // west side, then the Marina South promenade. Static geometry, zero ticks;
+  // applyTimeOfDay flips visibility (sunset or festive only). 1 draw call.
+  {
+    const rim = [
+      [-160, 240], [-150, 150], [-180, 90],   // civic promenade (addPath run)
+      [-215, 5], [-200, -50],                 // hug the bay's west corner
+      [-100, -90], [0, -70], [100, -50], [200, -80]  // Marina South boulevard
+    ].map(p => new THREE.Vector3(p[0], 3, p[1]));
+    const rimCurve = new THREE.CatmullRomCurve3(rim);
+    const lamps = rimCurve.getSpacedPoints(Math.round(rimCurve.getLength() / 6));
+    const pos = new Float32Array(lamps.length * 3);
+    lamps.forEach((p, i) => {
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    garlandPts = new THREE.Points(geo, new THREE.PointsMaterial({
+      color: 0xffc878, size: 2, sizeAttenuation: true,
+      transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    garlandPts.frustumCulled = false;
+    garlandPts.visible = false;  // applyTimeOfDay decides
+    scene.add(garlandPts);
+  }
+
   // === LANDMARKS ===
   function buildMBS(x, z) {
     const g = new THREE.Group();
@@ -2831,6 +2877,7 @@
   function buildEsplanade(x, z) {
     const g = new THREE.Group();
     const skin = new THREE.MeshPhongMaterial({ color: 0xb88a52, shininess: 60 });
+    timeAware.esplanadeShellMat = skin;  // D5: faint golden dome glow at sunset
     const base = new THREE.MeshPhongMaterial({ color: 0x3a3a3e });
     const plat = new THREE.Mesh(new THREE.BoxGeometry(85, 6, 55), base);
     plat.position.y = 3; plat.receiveShadow = true; g.add(plat);
@@ -2857,6 +2904,110 @@
       dome.position.x = (i - 0.5) * 38;
       g.add(dome);
     }
+    g.position.set(x, 0, z); return g;
+  }
+
+  // === D1: NS SQUARE (from the architectural render) ===
+  // The new permanent NDP home: a white circular waterfront amphitheater
+  // jutting into the bay, crowned with the red "SG" spiral roof. Sits on the
+  // NE shore between the Esplanade and the Flyer, directly under the
+  // P15→P0 lap-start overpass (flight Y 88-92) — so the roof mark is built
+  // to read from above. ~8 meshes + 2 one-off canvases, all inside Part C's
+  // draw-call savings. Mobile drops one seating arc.
+  function buildNSSquare(x, z) {
+    const g = new THREE.Group();
+    const white = new THREE.MeshPhongMaterial({ color: 0xf2efe6, shininess: 35 });
+    const red   = new THREE.MeshPhongMaterial({ color: 0xd8232a, shininess: 25 });
+
+    // Low white platform jutting toward the bay
+    const plat = new THREE.Mesh(new THREE.CylinderGeometry(30, 32, 6, 28), white);
+    plat.position.y = 3; plat.castShadow = true; plat.receiveShadow = true;
+    g.add(plat);
+
+    // The roof mark — one 256² canvas: white base, outer red rim, a thick
+    // red spiral winding out like the seat-row swirl in the render, and a
+    // central red medallion with a white S-sweep. Stylized SG suggestion,
+    // not a literal font logo.
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f4f1e9'; ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = '#d8232a'; ctx.lineCap = 'round';
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(128, 128, 118, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    for (let i = 0; i <= 64; i++) {
+      const t = i / 64;
+      const r = 30 + t * 80;
+      const a = t * Math.PI * 4.4;
+      const px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#d8232a';
+    ctx.beginPath(); ctx.arc(128, 128, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f4f1e9'; ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(128, 119, 9, Math.PI * 0.5, Math.PI * 1.5, true);
+    ctx.arc(128, 137, 9, Math.PI * 1.5, Math.PI * 0.5, true);
+    ctx.stroke();
+    // Same canvas as map + emissiveMap so the swirl glows gently at dusk —
+    // rides the shared facade dimmer in applyTimeOfDay; emiScale 0.5 keeps
+    // it a glow, not a billboard (0.42 sunset / 0.06 day).
+    const roofTex = new THREE.CanvasTexture(c);
+    const roofMat = new THREE.MeshPhongMaterial({
+      map: roofTex, emissiveMap: roofTex, emissive: 0xffffff,
+      emissiveIntensity: 0.06, shininess: 20
+    });
+    roofMat.userData.emiScale = 0.5;
+    timeAware.facadeMaterials.push(roofMat);
+    const roofGeo = new THREE.CircleGeometry(22, 36);
+    roofGeo.rotateX(-Math.PI / 2);
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 11; roof.castShadow = true; g.add(roof);
+    // …floating on a stubby white core (the stage column)
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 4.5, 5, 12), white);
+    core.position.y = 8.5; g.add(core);
+
+    // Terraced seating arcs stepping up and out around the bowl, red/white
+    // alternating like the render's seat rows. Arcs open toward the water
+    // (-z); the grandstand closes the land side.
+    const nArcs = isMobilePerf ? 2 : 3;
+    for (let i = 0; i < nArcs; i++) {
+      const arcGeo = new THREE.TorusGeometry(23.5 + i * 3, 1.2, 4, 26, Math.PI * 1.4);
+      arcGeo.rotateZ(Math.PI * 0.8);     // center the sweep on +z (land side)
+      arcGeo.rotateX(-Math.PI / 2);      // lay it flat
+      const arc = new THREE.Mesh(arcGeo, i % 2 === 0 ? red : white);
+      arc.position.y = 7 + i * 1.1;
+      g.add(arc);
+    }
+
+    // Grandstand canopy behind (land side), circular skylights baked into a
+    // tiny canvas — the dots smear a little on the 3.5-unit sides, which is
+    // fine: nobody sees this thing from below.
+    const dotC = document.createElement('canvas');
+    dotC.width = 64; dotC.height = 32;
+    const dctx = dotC.getContext('2d');
+    dctx.fillStyle = '#e8e5dc'; dctx.fillRect(0, 0, 64, 32);
+    dctx.fillStyle = '#9aa0a8';
+    for (let i = 0; i < 14; i++) {
+      const dx = (i * 37 + 11) % 60 + 2, dy = (i * 23 + 7) % 26 + 3;
+      dctx.beginPath(); dctx.arc(dx, dy, 2.2, 0, Math.PI * 2); dctx.fill();
+    }
+    const canopyMat = new THREE.MeshPhongMaterial({
+      map: new THREE.CanvasTexture(dotC), shininess: 30
+    });
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(44, 3.5, 14), canopyMat);
+    canopy.position.set(0, 14, 27); canopy.castShadow = true; g.add(canopy);
+
+    // Lap-pool strip glowing at the waterfront edge (bottom-right of the
+    // render — the little blue jetty pool)
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(20, 0.8, 4.5),
+      new THREE.MeshPhongMaterial({ color: 0x55d8ee, emissive: 0x22aacc,
+        emissiveIntensity: 0.7, shininess: 150 }));
+    pool.position.set(8, 6.4, -25); g.add(pool);
+
     g.position.set(x, 0, z); return g;
   }
 
@@ -3146,6 +3297,10 @@
   scene.add(buildSupertrees(140, -260));  addCollider(140, -260, 60, 65, 65);
   scene.add(merlion);                     addCollider(-180, 200, 12, 12, 32);
   scene.add(buildEsplanade(70, 270));     addCollider(70, 270, 45, 30, 27);
+  // D1: NS Square on the NE shore — top of structure ~y 16, collider 22;
+  // the P15→P0 overpass runs Y 88-92 and player drift bottoms out at -16,
+  // so min flight altitude over it is ~72. No conflict, all spectacle.
+  scene.add(buildNSSquare(150, 180));     addCollider(150, 180, 32, 32, 22);
   scene.add(buildArtScience(70, -100));   addCollider(70, -100, 24, 24, 32);
   scene.add(buildHelixBridge(-60, 100, Math.PI / 2.4));
                                           addCollider(-60, 100, 28, 28, 11);
@@ -4217,14 +4372,52 @@
       new THREE.Vector3(-8, 1, 0), new THREE.Vector3(-12, 0, 0)
     ]);
     g.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x222222 })));
-    g.userData = { rotorFront, rotorRear, flag };
+    // D2: bodyMat/rotorMat exposed so the festive escorts can share them
+    g.userData = { rotorFront, rotorRear, flag, bodyMat, rotorMat };
     g.visible = false;
     return g;
   })();
   scene.add(chinook);
 
+  // === D2: FESTIVE CHINOOK ESCORTS ===
+  // In the NDP reference photo the flag Chinook never flies alone — two
+  // escort helis flank it, slightly behind and above. Simplified 60%-scale
+  // chinook bodies (no flag, no tow line), sharing the parent's materials.
+  // Out only when festiveActive() says so; tickChinook positions them at
+  // fixed offsets off the same orbit — zero new pathing logic.
+  function buildEscortHeli() {
+    const g = new THREE.Group();
+    const bodyMat = chinook.userData.bodyMat;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.4, 16, 8), bodyMat);
+    body.rotation.z = Math.PI / 2;
+    g.add(body);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(4, 3.5, 3), bodyMat);
+    tail.position.set(-7, 1.5, 0);
+    g.add(tail);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.5, 2.5), bodyMat);
+    front.position.set(5, 1.8, 0);
+    g.add(front);
+    const rotorGeo = new THREE.CylinderGeometry(5, 5, 0.15, 12);
+    const rotorFront = new THREE.Mesh(rotorGeo, chinook.userData.rotorMat);
+    rotorFront.position.set(5, 3.5, 0);
+    g.add(rotorFront);
+    const rotorRear = new THREE.Mesh(rotorGeo, chinook.userData.rotorMat);
+    rotorRear.position.set(-7, 3.5, 0);
+    g.add(rotorRear);
+    g.scale.setScalar(0.6);
+    g.userData = { rotorFront, rotorRear };
+    g.visible = false;
+    scene.add(g);
+    return g;
+  }
+  const chinookEscorts = [buildEscortHeli(), buildEscortHeli()];
+
   function tickChinook(time) {
-    if (Settings.timeOfDay !== 'day') { chinook.visible = false; return; }
+    if (Settings.timeOfDay !== 'day') {
+      chinook.visible = false;
+      chinookEscorts[0].visible = chinookEscorts[1].visible = false;
+      return;
+    }
     chinook.visible = true;
     const period = 80;
     const ang = (time / period) * Math.PI * 2;
@@ -4233,6 +4426,24 @@
     chinook.rotation.y = -ang + Math.PI / 2;
     chinook.userData.rotorFront.rotation.y = time * 30;
     chinook.userData.rotorRear.rotation.y = -time * 30;
+    // D2: escorts hold formation off the same orbit — ±28 radial spread,
+    // 14 behind (orbit forward is (-sin, cos), so behind is (sin, -cos)),
+    // 6 above, matching the NDP photo's loose V. No allocations.
+    const fest = window.festiveActive();
+    for (let e = 0; e < 2; e++) {
+      const esc = chinookEscorts[e];
+      esc.visible = fest;
+      if (!fest) continue;
+      const side = e === 0 ? 28 : -28;
+      esc.position.set(
+        Math.cos(ang) * (r + side) + Math.sin(ang) * 14,
+        256,
+        Math.sin(ang) * (r + side) - Math.cos(ang) * 14
+      );
+      esc.rotation.y = chinook.rotation.y;
+      esc.userData.rotorFront.rotation.y = time * 34;
+      esc.userData.rotorRear.rotation.y = -time * 34;
+    }
     const fp = chinook.userData.flag.geometry.attributes.position;
     for (let i = 0; i < fp.count; i++) {
       const x = fp.getX(i);
@@ -4676,6 +4887,17 @@
     { x: -30, z: -180 },
     { x: 70,  z: 270  }
   ];
+  // D4: when festive, fireworks spread along the shoreline arc like the NDP
+  // finale photo — anchored at NS Square (the new centerpiece) plus rim
+  // points along the promenade garland. Pure site-selection swap; the pool
+  // itself is untouched.
+  const FW_SITES_FESTIVE = [
+    { x: 150,  z: 180 },   // NS Square — the anchor
+    { x: 200,  z: -80 },   // promenade rim, south-east
+    { x: 0,    z: -70 },   // promenade rim, mid-south
+    { x: -180, z: 90  },   // civic rim, west
+    { x: 70,   z: 270 }    // Esplanade
+  ];
   const fireworks = [];
   const FW_COUNT = isMobilePerf ? 2 : 3;
   for (let i = 0; i < FW_COUNT; i++) {
@@ -4705,7 +4927,9 @@
   function launchFirework(siteOverride, sizeMult) {
     const slot = fireworks.find(f => f.state === 'idle');
     if (!slot) return;
-    const site = siteOverride || FW_SITES[Math.floor(Math.random() * FW_SITES.length)];
+    // D4: festive flights pull from the shoreline-arc list instead
+    const sites = window.festiveActive() ? FW_SITES_FESTIVE : FW_SITES;
+    const site = siteOverride || sites[Math.floor(Math.random() * sites.length)];
     const apexY = 180 + Math.random() * 60;
     slot.target = { x: site.x, y: apexY, z: site.z };
     slot.state = 'rocket';
@@ -5472,7 +5696,17 @@
         game.breatherPending = true;
         // v11: streak finale firework over the bay (sunset only — fireworks check internally)
         if (Settings.timeOfDay === 'sunset') {
-          launchFirework(FW_SITES[0], 2);
+          if (window.festiveActive() && game.streak % 10 === 0) {
+            // D4: festive deca-streak — a quick volley walking the shoreline
+            // arc, NS Square first. (The full RSAF salute is a later part;
+            // this is just the fireworks half saying hello.)
+            launchFirework(FW_SITES_FESTIVE[0], 2);
+            setTimeout(() => launchFirework(FW_SITES_FESTIVE[1], 1.5), 380);
+            setTimeout(() => launchFirework(FW_SITES_FESTIVE[3], 1.5), 760);
+          } else {
+            // Festive 5-streaks still get their single finale, NS Square'd
+            launchFirework(window.festiveActive() ? FW_SITES_FESTIVE[0] : FW_SITES[0], 2);
+          }
         }
         if (game.lives < MAX_LIVES) {
           game.lives++;
