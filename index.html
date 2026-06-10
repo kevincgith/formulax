@@ -1,8 +1,34 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v15.1)
+  TOP SUM · Math Flight (v16)
   ------------------------------------------------------------
+  v16 changes — MARINA BAY REBUILT FROM THE REAL MAP:
+    · Coordinate system fixed: the old world mapped north to +z,
+      which in three.js (right-handed, y-up) renders a MIRROR
+      IMAGE of Singapore. The whole map is rebuilt with north
+      = -z / east = +x, so the bay finally matches Google Maps.
+    · Land rebuilt from real lat/lon at 1:2 scale (1 unit = 2 m):
+      one continuous mainland wraps the bay — CBD on the west
+      shore, civic + Esplanade + the Float + Flyer on the north,
+      ArtScience/MBS/Gardens down the east, Marina Blvd on the
+      south — plus the Singapore River notch at the NW corner,
+      the NE channel mouth spanned by the Helix (true N-S axis),
+      the Kallang basin running NW-SE behind it, and Bay East
+      Garden as a green island across the basin.
+    · Every landmark re-anchored to its real position and
+      verified on land by an offline point-in-polygon sweep
+      (no more towers standing in the water).
+    · Flight path redesigned as a counterclockwise bay tour:
+      south-shore vista, a long S->N skypark skim down the MBS
+      slab, overflight of the Helix, Flyer pass, Suntec turn,
+      Esplanade, river mouth, CBD east-face run, MBFC corner.
+      Drift-envelope sim: centerline clean; contacts only at
+      the four deliberately-reachable structures.
+    · Flag Chinook fixed: it orbited tail-first (heading was pi
+      off), and the flag texture had the crescent at the fly end
+      — the hoist (crescent side) now attaches at the tow line.
+
   v15.1 changes — GEOGRAPHY REMAP:
     · Helix Bridge re-anchored over the real east channel (both
       deck ends on land; traffic + light garland cross it).
@@ -2886,36 +2912,44 @@
     return mesh;
   }
 
-  const marinaSouthCoast = [
-    [-200, -50], [-100, -90], [0, -70], [100, -50],
-    [200, -80], [260, -150], [280, -260], [200, -370],
-    [0, -400], [-200, -370], [-280, -260], [-280, -150], [-220, -80]
+  // v16: rebuilt from the real map at 1:2 scale, +x = east / -z = north
+  // (right-handed — the old +z=north convention rendered a mirror image).
+  // One continuous mainland wraps Marina Bay like the real shoreline:
+  // trace = Helix north landing -> bay north shore (Float, Esplanade) ->
+  // Singapore River notch -> west shore (Collyer Quay/CBD) -> Marina Blvd
+  // south shore -> east shore (MBS promenade, ArtScience promontory) ->
+  // Helix south landing -> Kallang-basin SW bank (Gardens) -> Barrage point
+  // -> outer south/west/north coasts -> Marina Centre east bank -> close.
+  const mainlandCoast = [
+    [186, -152],
+    [150, -175], [100, -195], [20, -205], [-90, -212],
+    [-140, -195], [-165, -160],
+    [-170, -138], [-300, -126], [-300, -102], [-168, -92],
+    [-170, -55], [-165, 40], [-148, 125],
+    [-120, 190], [-55, 228], [45, 242], [115, 232],
+    [138, 165], [130, 70], [128, -10],
+    [104, -40],
+    [126, -66], [148, -76],
+    [210, -50], [270, 10], [330, 80], [380, 150],
+    [420, 210],
+    [330, 315], [130, 365], [-90, 385], [-280, 345],
+    [-395, 245], [-450, 80], [-440, -100], [-400, -220],
+    [-290, -330], [-110, -385], [90, -395], [280, -360],
+    [340, -330],
+    [370, -270], [385, -215], [350, -180], [280, -160], [225, -150]
   ];
-  scene.add(buildBeach(marinaSouthCoast.map(p => [p[0]*1.04, p[1]*1.04])));
-  scene.add(buildLand(marinaSouthCoast, 0x6b8c5a));
+  scene.add(buildBeach(mainlandCoast.map(p => [p[0]*1.04, p[1]*1.04])));
+  scene.add(buildLand(mainlandCoast, 0x6b8c5a));
 
-  const civicCoast = [
-    [-200, 300], [-160, 240], [-150, 150], [-180, 90],
-    [-220, 0], [-260, -80], [-280, -160], [-380, -200],
-    [-450, -80], [-450, 100], [-400, 220], [-300, 300]
+  // Bay East Garden / Tanjong Rhu — the green strip across the Kallang
+  // basin (the golf-course land in the satellite view). Trees only, no towers.
+  const bayEastCoast = [
+    [450, 185], [440, 120], [445, 20], [450, -80],
+    [445, -180], [430, -260], [405, -330],
+    [470, -345], [492, -200], [500, -40], [495, 100], [478, 190]
   ];
-  scene.add(buildBeach(civicCoast.map(p => [p[0]*1.04, p[1]*1.04])));
-  scene.add(buildLand(civicCoast, 0x6b8c5a));
-
-  const marinaEastCoast = [
-    [220, 300], [180, 220], [200, 140], [230, 60],
-    [260, -20], [350, -60], [460, 0], [460, 150],
-    [420, 260], [350, 320], [280, 330]
-  ];
-  scene.add(buildBeach(marinaEastCoast.map(p => [p[0]*1.04, p[1]*1.04])));
-  scene.add(buildLand(marinaEastCoast, 0x6b8c5a));
-
-  const esplanadeCoast = [
-    [0, 240], [40, 220], [130, 240], [160, 290],
-    [130, 320], [0, 320], [-50, 280]
-  ];
-  scene.add(buildBeach(esplanadeCoast.map(p => [p[0]*1.05, p[1]*1.05])));
-  scene.add(buildLand(esplanadeCoast, 0x6b8c5a));
+  scene.add(buildBeach(bayEastCoast.map(p => [p[0]*1.04, p[1]*1.04])));
+  scene.add(buildLand(bayEastCoast, 0x6b8c5a));
 
   function addPath(x1, z1, x2, z2, w) {
     w = w || 4;
@@ -2929,15 +2963,22 @@
     path.position.set((x1+x2)/2, 0.62, (z1+z2)/2);
     scene.add(path);
   }
-  addPath(-100, -90, 0, -70, 5);
-  addPath(0, -70, 100, -50, 5);
-  addPath(100, -50, 200, -80, 5);
-  // v15.1: Marina East shore promenade, from the Helix landing past NS Square
-  addPath(262, -16, 240, 42, 4);
-  addPath(240, 42, 214, 118, 4);
-  addPath(214, 118, 208, 142, 4);
-  addPath(-180, 90, -150, 150, 4);
-  addPath(-150, 150, -160, 240, 4);
+  // Marina Blvd promenade along the south shore
+  addPath(-130, 215, -40, 235, 5);
+  addPath(-40, 235, 60, 248, 5);
+  addPath(60, 248, 125, 235, 5);
+  // Collyer Quay walk down the west shore
+  addPath(-160, -60, -158, 40, 4);
+  addPath(-158, 40, -140, 125, 4);
+  // North-shore promenade: Esplanade -> the Float -> Helix north landing
+  addPath(-130, -200, -20, -212, 4);
+  addPath(-20, -212, 80, -200, 4);
+  addPath(80, -200, 145, -180, 4);
+  addPath(145, -180, 184, -150, 4);
+  // Bayfront walk: Helix south landing -> ArtScience -> MBS event plaza
+  addPath(150, -80, 134, -50, 4);
+  addPath(134, -50, 140, 20, 4);
+  addPath(140, 20, 142, 90, 4);
 
   function addTree(x, z, scale) {
     scale = scale || 1;
@@ -2957,14 +2998,19 @@
     scene.add(leaves);
   }
   const treeSpots = [
-    [-50, -75, 1], [50, -60, 0.9], [150, -65, 1.1], [-150, -100, 0.9],
-    [-238, -118, 1], [252, -180, 1.1], [-150, -250, 0.9], [180, -300, 1],
-    [-50, -350, 1.1], [80, -350, 0.9],
-    [-220, 100, 1], [-260, 50, 0.9], [-300, -50, 1.1], [-350, -100, 1],
-    [-380, 50, 0.9], [-200, 200, 1], [-180, 280, 1.1],
-    [240, 100, 1], [280, 200, 1.1], [380, 50, 0.9], [350, 200, 1],
-    [400, -30, 1.1], [430, 100, 0.9],
-    [40, 290, 0.8], [130, 280, 0.9]
+    // Marina South / Gardens parkland (south shore)
+    [-90, 250, 1], [0, 280, 1.1], [90, 265, 0.9], [240, 325, 1], [255, 300, 0.9],
+    // Bayfront strip between the bay and the basin
+    [200, -20, 1], [235, 30, 0.9], [180, 170, 1],
+    // civic / Marina Centre (north)
+    [-150, -230, 1], [-60, -250, 0.9], [40, -230, 1.1], [-200, -300, 1],
+    [60, -300, 0.9], [150, -250, 1], [330, -300, 1.1],
+    // west shore / CBD fringes
+    [-240, -30, 1], [-250, 120, 0.9], [-200, 200, 1.1], [-178, -70, 0.8],
+    // Bay East Garden island (the golf-course green)
+    [465, -150, 1.1], [470, -250, 1], [480, -50, 0.9], [472, 80, 1], [460, 140, 0.9],
+    // inland NW
+    [-350, -120, 1], [-330, -260, 1.1]
   ];
   treeSpots.forEach(s => addTree(s[0], s[1], s[2]));
 
@@ -3024,15 +3070,15 @@
     boats.push({ mesh, route: routePoints, segLengths, total, speed,
       progress: Math.random() * total });
   }
-  // All routes verified to stay in central bay water, away from land masses.
-  // (v15.1: the Helix Bridge moved to the east channel at (230,-50), outside
-  // this zone, so the bay is collider-free for boats.)
-  // Bay safe zone: roughly X=-110 to 170, Z=-30 to 200.
-  addBoat(buildFerry(),   [[-100,40],[-110,140],[-30,180],[60,180],[140,130],[140,40],[60,5],[-30,5]], 8);
-  addBoat(buildFerry(),   [[110,160],[40,200],[-40,205],[-90,165],[-30,115],[80,115]], 7);
-  addBoat(buildBumboat(), [[-50,30],[-20,70],[40,70],[80,30],[40,-15],[-20,-15]], 5);
-  addBoat(buildBumboat(), [[140,55],[170,105],[110,135],[60,115],[80,55],[120,30]], 4.5);
-  addBoat(buildBumboat(), [[-90,-10],[-110,30],[-130,5],[-100,-30],[-70,-30]], 5.5);
+  // All routes verified in water by the v16 offline point-in-polygon sweep.
+  // Bay water: roughly X=-165..125, Z=-200..230; the third bumboat runs the
+  // Singapore River notch (z=-126..-102) out to the Merlion, like the real
+  // river cruises.
+  addBoat(buildFerry(),   [[-120,-60],[-130,40],[-90,140],[0,190],[80,180],[105,90],[60,-40],[-30,-120]], 8);
+  addBoat(buildFerry(),   [[60,150],[-20,180],[-100,150],[-120,60],[-60,-10],[20,30]], 7);
+  addBoat(buildBumboat(), [[-280,-114],[-220,-112],[-150,-100],[-120,-60],[-160,-40],[-230,-108]], 5);
+  addBoat(buildBumboat(), [[-60,-150],[20,-170],[70,-130],[40,-80],[-40,-90]], 4.5);
+  addBoat(buildBumboat(), [[-100,80],[-50,120],[10,100],[0,40],[-70,30]], 5.5);
 
   // === C5: AMBIENT TRAFFIC ===
   // Cities: Skylines life signs — tiny light dots crawling three road routes.
@@ -3047,18 +3093,18 @@
       pts.map(p => new THREE.Vector3(p[0], p[1], p[2]))
     ).getSpacedPoints(TRAFFIC_SAMPLES - 1)); // n segments → n+1 = 200 points
   }
-  // 1) Helix Bridge crossing — bridge group sits at (230,-50) rotY -45° over
-  //    the east channel; waypoints run the deck axis with ~60-unit overruns
-  //    onto the Marina South / Marina East banks (both verified on land).
-  addTrafficRoute([[188, 3.4, -92], [198, 3.4, -82], [230, 3.4, -50],
-                   [262, 3.4, -18], [272, 3.4, -8]]);
-  // 2) Marina South boulevard — a few units inland of the promenade path
-  //    (addPath waypoints run (-100,-90) → (200,-80) along the south shore)
-  addTrafficRoute([[-110, 1.0, -82], [0, 1.0, -62], [100, 1.0, -42], [210, 1.0, -72]]);
+  // 1) Helix Bridge crossing — deck sits at (167,-114) on the real N-S-ish
+  //    axis (dir 0.447,-0.894); waypoints run the axis with ~10-unit
+  //    overruns onto the two landings (both verified on land).
+  addTrafficRoute([[142, 3.4, -65], [152, 3.4, -85], [167, 3.4, -114],
+                   [182, 3.4, -143], [192, 3.4, -163]]);
+  // 2) Marina Blvd — a few units inland of the south-shore promenade
+  addTrafficRoute([[-130, 1.0, 225], [-50, 1.0, 243], [45, 1.0, 258],
+                   [115, 1.0, 248], [140, 1.0, 190]]);
   // 3) CBD arterial — gentle curve skirting the bay-side edge of the towers
   //    (stays east of every footprint; mobile skips this route entirely)
-  addTrafficRoute([[-248, 1.0, -160], [-262, 1.0, -60], [-268, 1.0, 20],
-                   [-262, 1.0, 100], [-248, 1.0, 195]]);
+  addTrafficRoute([[-248, 1.0, 160], [-262, 1.0, 60], [-268, 1.0, -20],
+                   [-262, 1.0, -60], [-240, 1.0, -80]]);
 
   const trafficCars = [];
   function initTraffic() {
@@ -3123,18 +3169,22 @@
   // === D3: SHORELINE LIGHT GARLAND ===
   // Every dusk reference photo has one feature in common: a warm glowing rim
   // of promenade lights tracing the bay. One Points string, sampled every
-  // ~6 units along a CatmullRom through the same shoreline waypoints the
-  // walking paths (and traffic route 2) already follow — civic rim down the
-  // west side, the Marina South promenade, then (v15.1) across the Helix
-  // deck and up the Marina East shore past NS Square. Static geometry, zero
-  // ticks; applyTimeOfDay flips visibility (sunset or festive only). 1 call.
+  // ~6 units along a CatmullRom through the bay-rim waypoints the walking
+  // paths already follow — one warm ring right around the bay: river mouth,
+  // Collyer Quay, Marina Blvd, the MBS promenade up past ArtScience, across
+  // the Helix deck (mid-bridge pin), then back west along the north shore
+  // past the Float and Esplanade. Static geometry, zero ticks;
+  // applyTimeOfDay flips visibility (sunset or festive only). 1 call.
   {
     const rim = [
-      [-160, 240], [-150, 150], [-180, 90],   // civic promenade (addPath run)
-      [-215, 5], [-200, -50],                 // hug the bay's west corner
-      [-100, -90], [0, -70], [100, -50], [200, -80],  // Marina South boulevard
-      [230, -50],                             // mid-bridge pin: lamps hug the Helix deck
-      [262, -16], [240, 42], [214, 118], [208, 142]   // Marina East shore run
+      [-150, -185], [-163, -135], [-162, -90],          // river mouth
+      [-160, -40], [-156, 40], [-140, 125],             // Collyer Quay (west)
+      [-115, 185], [-55, 222], [45, 236], [112, 228],   // Marina Blvd (south)
+      [133, 165], [127, 70], [124, -12],                // MBS promenade (east)
+      [104, -38], [128, -68], [148, -78],               // ArtScience promontory
+      [167, -114],                                      // mid-bridge pin on the Helix
+      [186, -150], [150, -172], [98, -190],             // north shore eastern arc
+      [18, -200], [-90, -207], [-138, -192]             // the Float -> Esplanade
     ].map(p => new THREE.Vector3(p[0], 3, p[1]));
     const rimCurve = new THREE.CatmullRomCurve3(rim);
     const lamps = rimCurve.getSpacedPoints(Math.round(rimCurve.getLength() / 6));
@@ -3353,11 +3403,12 @@
 
   // === D1: NS SQUARE (from the architectural render) ===
   // The new permanent NDP home: a white circular waterfront amphitheater
-  // jutting into the bay, crowned with the red "SG" spiral roof. Anchored on
-  // the Marina East shore (v15.1) with the platform overhanging the water to
-  // the west, under the P0→P1 lap-start leg — so the roof mark is built
-  // to read from above. ~8 meshes + 2 one-off canvases, all inside Part C's
-  // draw-call savings. Mobile drops one seating arc.
+  // jutting into the bay, crowned with the red "SG" spiral roof. Anchored
+  // (v16) on the bay's NORTH shore at the real Float position, platform
+  // overhanging the water to the south — the flight path crosses the north
+  // shore right above it, so the roof mark is built to read from above.
+  // ~8 meshes + 2 one-off canvases, all inside Part C's draw-call savings.
+  // Mobile drops one seating arc.
   function buildNSSquare(x, z) {
     const g = new THREE.Group();
     const white = new THREE.MeshPhongMaterial({ color: 0xf2efe6, shininess: 35 });
@@ -3745,43 +3796,55 @@
   const colliders = [];
   function addCollider(cx, cz, hx, hz, topY) { colliders.push({ x: cx, z: cz, hx, hz, topY }); }
 
-  // v15.1: Merlion at the civic water's edge (shore x≈-154.7 at z=192),
-  // rotated so the head/spout (local +z) face EAST into the bay. x=-165 keeps
-  // the garland curve 13.2 clear of the r-11 pedestal (it clips at -158).
-  const merlion = buildMerlion(-165, 192);
+  // v16: every anchor below comes from real lat/lon at 1:2 scale and was
+  // verified on land (point-in-polygon) by the offline geometry sweep.
+  // Merlion at the river-mouth corner of the west shore (real position),
+  // pedestal rim jutting over the water, head/spout (local +z) rotated to
+  // face EAST into the bay.
+  const merlion = buildMerlion(-172, -75);
   merlion.rotation.y = Math.PI / 2;
-  scene.add(buildMBS(60, -185));          addCollider(60, -185, 42, 18, 120);
-  const st = buildSupertrees(190, -250);
-  // 90° turn elongates the grove N-S (like the real Gardens) — keeps its east
-  // face 7.8 clear of the P3→P4 drift reach while staying 43 from MBS.
-  st.rotation.y = Math.PI / 2;
-  scene.add(st);                          addCollider(190, -255, 45, 64, 65);
-  scene.add(merlion);                     addCollider(-165, 192, 12, 12, 32);
-  // v15.1: Fullerton Hotel beside the Merlion (real adjacency); P14 passes
-  // 80+ above the 24-high heritage roof.
-  scene.add(buildFullerton(-197, 228));   addCollider(-197, 228, 13, 25, 24);
-  scene.add(buildEsplanade(70, 270));     addCollider(70, 270, 45, 30, 27);
-  // D1: NS Square anchored on the Marina East shore (edge x≈191 at z=175) —
-  // top of structure ~y 16, collider 22; the P0→P1 leg passes 77m west and
-  // player drift bottoms out at -16, so min altitude over it is ~72.
-  const ns = buildNSSquare(195, 175);
-  // Rotate so the grandstand canopy (local +z) faces EAST onto land and the
-  // circular platform juts WEST into the bay — the real Float anchoring.
-  ns.rotation.y = Math.PI / 2;
-  scene.add(ns);                          addCollider(195, 175, 32, 32, 22);
-  scene.add(buildArtScience(115, -72));   addCollider(115, -72, 24, 24, 32);
-  // v15.1: Helix spans the real east channel — deck (90 long, rotY -45°)
-  // lands on the Marina South tip (200,-80) and Marina East tip (260,-20),
-  // 84.85m apart, ~2.6 overhang per end. Collider = AABB of the rotated deck.
-  scene.add(buildHelixBridge(230, -50, -Math.PI / 4));
-                                          addCollider(230, -50, 34, 34, 11);
-  const flyer = buildFlyer(310, 30);      // Part A: captured — update() spins the wheel
-  scene.add(flyer);                       addCollider(310, 30, 38, 38, 82);
-  scene.add(buildHDB(380, 220));          addCollider(380, 220, 30, 30, 48);
-  scene.add(buildHDB(-380, -200));        addCollider(-380, -200, 30, 30, 48);
+  // MBS on the east shore: rotY 90° lays the 3-tower slab along z (real
+  // NNE-SSW alignment), towers facing the bay across the event plaza, with
+  // the skypark cantilever (local +x -> world -z) overhanging the NORTH end
+  // toward ArtScience — the real boat-prow direction.
+  const mbs = buildMBS(164, 100);
+  mbs.rotation.y = Math.PI / 2;
+  scene.add(mbs);                         addCollider(164, 100, 18, 42, 120);
+  // Supertree Grove east-southeast of MBS in Gardens by the Bay (real
+  // adjacency; the grove's long axis runs E-W like the satellite view).
+  scene.add(buildSupertrees(295, 240));   addCollider(295, 240, 58, 40, 65);
+  scene.add(merlion);                     addCollider(-172, -75, 12, 12, 32);
+  // Fullerton Hotel just SW of the Merlion behind Collyer Quay (real
+  // adjacency), entrance portico (+x) toward the water.
+  scene.add(buildFullerton(-195, -45));   addCollider(-195, -45, 13, 25, 24);
+  // Esplanade theatres on the bay's north shore, durian domes at the
+  // waterfront — NE of the Merlion across the river mouth, like the map.
+  scene.add(buildEsplanade(-105, -240));  addCollider(-105, -240, 45, 30, 27);
+  // D1/v16: NS Square at the real Float position on the NORTH shore
+  // (shore z≈-193 at x=105) — grandstand canopy (local +z -> world -z)
+  // closes the land side, platform juts SOUTH into the bay.
+  const ns = buildNSSquare(105, -192);
+  ns.rotation.y = Math.PI;
+  scene.add(ns);                          addCollider(105, -192, 32, 32, 22);
+  // ArtScience on its real promontory: the lotus rim overhangs the bay at
+  // the east shore's north tip, next door to the Helix south landing.
+  scene.add(buildArtScience(105, -42));   addCollider(105, -42, 24, 24, 32);
+  // Helix spans the bay's NE mouth on the real ~N-S axis (dir 0.447,-0.894):
+  // deck (90 long, rotY 63.4°) lands at Marina Centre (186,-152) and
+  // Bayfront (148,-76), ~2.5 overhang onto each bank. Collider = deck AABB.
+  scene.add(buildHelixBridge(167, -114, Math.atan2(0.8944, 0.4472)));
+                                          addCollider(167, -114, 23, 43, 11);
+  // Singapore Flyer on Marina Centre's east point, between the Float and
+  // the Kallang basin (real position; the basin bank passes ~50 east).
+  const flyer = buildFlyer(310, -215);    // Part A: captured — update() spins the wheel
+  scene.add(flyer);                       addCollider(310, -215, 38, 38, 82);
+  scene.add(buildHDB(-50, -330));         addCollider(-50, -330, 30, 30, 48);
+  scene.add(buildHDB(-310, -230));        addCollider(-310, -230, 30, 30, 48);
 
+  // CBD on the west shore behind Collyer Quay (Raffles Place), all towers
+  // south of the river notch.
   const cbdSeeds = [[-330,50],[-310,90],[-290,30],[-340,-20],[-300,-60],
-    [-360,10],[-320,130],[-280,-100],[-345,70],[-300,160]];
+    [-360,10],[-320,130],[-282,-75],[-345,70],[-300,160]];
   cbdSeeds.forEach((p, i) => {
     const w = 20 + (i*7)%18;
     const h = 50 + (i*17)%90;
@@ -3793,31 +3856,34 @@
     scene.add(b);
     addCollider(p[0], p[1], w/2 + 3, d/2 + 3, b.userData.totalH + 2);
   });
+  // v16: Suntec/Millenia cluster on the north shore behind the promenade,
+  // NW of the Flyer — the mid-rise wall you see behind the wheel from the
+  // bay, like the satellite view. Tops ≤65; the P10-P11 legs pass 28 above.
   for (let i = 0; i < 6; i++) {
-    const x = 280 + (i%3)*30;
-    const z = 100 + Math.floor(i/3)*40;
+    const x = 175 + (i%3)*38;
+    const z = -285 - Math.floor(i/3)*42;
     const h = 35 + (i*13)%25;
     // seed stride of 9 keeps the C2 style rolls well spread across the block
     const b = buildBuilding(x, z, 22, h, 22, 32 + i * 9, eastFacadeMat);
     scene.add(b);
     addCollider(x, z, 14, 14, b.userData.totalH + 2);
   }
-  // v15.1: MBFC trio on the Marina South west strip, across the channel from
-  // the CBD. The P10→P11 leg passes nearly overhead (T1 lateral ~6m at y≈99),
-  // so T1/T2 seeds are pinned to plain roofs — a crown there would be
-  // drift-contactable; the one setback crown goes on lateral-protected T3.
+  // v16: MBFC trio at its real spot — the bay's SW corner, ~200 m inland of
+  // Marina Blvd. The P16->P0 leg passes north of T1 with the drift envelope
+  // 12 short of the collider, so all three stay non-contactable; the one
+  // setback crown stays on T3.
   const mbfcTowers = [
-    [-204, -142, 22, 60, 2],   // T1 — plain roof (roll 17)
-    [-229, -167, 26, 72, 4],   // T2 — tallest, plain roof (roll 11)
-    [-203, -182, 24, 66, 3]    // T3 — setback crown (roll 4), totalH 80.5
+    [-190, 290, 22, 60, 2],   // T1 — plain roof (roll 17)
+    [-215, 315, 26, 72, 4],   // T2 — tallest, plain roof (roll 11)
+    [-182, 332, 24, 66, 3]    // T3 — setback crown (roll 4), totalH 80.5
   ];
   mbfcTowers.forEach(([x, z, fp, h, seed], i) => {
     const b = buildBuilding(x, z, fp, h, fp, seed, cbdFacadeMats[i % cbdFacadeMats.length]);
     scene.add(b);
     addCollider(x, z, fp/2 + 3, fp/2 + 3, b.userData.totalH + 2);
   });
-  // Plain beacon tip on T2 (no mast — a mast would close the P10→P11 margin)
-  warnBeaconTips.push([-229, 73.5, -167]);
+  // Plain beacon tip on T2 (no mast — keeps the skyline tip set tidy)
+  warnBeaconTips.push([-215, 73.5, 315]);
 
   // === C3: ROOFTOP PROP KIT ===
   // One InstancedMesh of grey boxes scattered over every roof rect collected
@@ -3862,8 +3928,8 @@
   // the MBS skypark corners and the Flyer apex added here. vertexColors so
   // festive mode can run the red/white alternation. One draw call.
   warnBeaconTips.push(
-    [16, 116, -197], [110, 116, -173],  // MBS skypark corners (top ≈ 115)
-    [310, 82.5, 30]                     // Flyer apex (hub 44 + radius 36)
+    [152, 116, 50], [176, 116, 150],    // MBS skypark corners (slab along z, top ≈ 115)
+    [310, 82.5, -215]                   // Flyer apex (hub 44 + radius 36)
   );
   {
     const n = warnBeaconTips.length;
@@ -3906,49 +3972,44 @@
     warnBeaconMat.opacity = (Math.sin(time * rate) > 0.3 ? 1.0 : 0.12) * ceiling;
   }
 
-  // === FLIGHT PATH (v3) ===
-  // Clockwise loop with three distinct cinematic moments:
-  //   P1-P2:   skim east of the Singapore Flyer (~62m)
-  //   P4-P5:   ★ BAY-SOUTH VISTA — low alt (Y=60) over mid-bay water,
-  //            looking north at the full skyline (MBS, Supertrees, CBD)
-  //   P6-P6b:  banked U-turn sweep over open water, facing the full skyline —
-  //            apex P6b spreads the old 121° pinch over ~200m
-  //   P7-P8:   ★ MBS CLOSE-PASS — diagonal SW→NE approach, climb from
-  //            Y=97 to Y=118, skim OVER the east cantilever (the iconic
-  //            boat overhang) of the relocated MBS (60,-185), 3/4 skypark view
-  //   P9-P9b:  ★ BAY-MID VIEW — descent east of the towers over open bay
-  //            water, turnaround apex P9b north of ArtScience, CBD ahead
-  //   P11-P12: along east face of CBD towers (3m clearance — threads through)
-  //   P14-P15: over Esplanade, then long wraparound over bay back to start
+  // === FLIGHT PATH (v16) ===
+  // Counterclockwise grand tour of the rebuilt bay (matching real compass
+  // directions: -z = north), with the cinematic moments in real order:
+  //   P0-P2:   ★ SOUTH-SHORE VISTA — low (Y 75-80) over Marina Blvd,
+  //            the full skyline (CBD, Merlion, Esplanade, MBS) across the bay
+  //   P3-P5:   ★ MBS SKYPARK SKIM — long S→N run down the whole slab at
+  //            Y≈124 (deck 115), exiting over the north cantilever prow
+  //   P6-P7:   past ArtScience, then directly over the Helix mouth (Y 98)
+  //   P8-P9:   Flyer pass — crosses the wheel collider with +10 clearance
+  //   P10-P12: westbound along the north shore over Suntec, the Float and
+  //            the Esplanade durians
+  //   P13:     river-mouth corner — Merlion below left
+  //   P14-P15: CBD east-face run (drift-reachable towers at -282,-75 and
+  //            -290,30) down the west shore
+  //   P16:     SW corner past MBFC, closing the loop onto the vista
   //
-  // v15.1 geography remap: P7/P8 shifted by the MBS delta (+90,-5) so the
-  // skim is geometrically identical relative to the building; P9 moved east
-  // because the pure-delta exit leg re-crossed the moved MBS collider on the
-  // centerline. Safety re-verified for player drift xMax=28, yMax=16:
-  // drift-envelope collider sweep shows contacts only at the same three
-  // deliberately-reachable structures (Flyer, MBS skypark, CBD tower at
-  // -300,-60) — zero centerline contacts. Apexes stay over open water;
-  // ArtScience clearance at P9 is ~40m lateral.
-  // Lap 2587m → 2697m (+4.3%); max pitch ~24° at P7→P8 (matches v15).
+  // Safety verified by the offline drift-envelope sweep (xMax=28, yMax=16):
+  // zero centerline contacts; envelope contacts only at the deliberate set
+  // (MBS skypark from above, Flyer from above, CBD7/CBD2 at full lateral
+  // drift). Lap ~2050m; max pitch ~22° on the P2→P3 climb.
   const pathPoints = [
-    new THREE.Vector3(  60,  88,  100),  // P0  start
-    new THREE.Vector3( 230,  88,   40),  // P1
-    new THREE.Vector3( 320,  95, -100),  // P2  Flyer close-pass
-    new THREE.Vector3( 270,  85, -240),  // P3
-    new THREE.Vector3( 270,  65, -360),  // P4
-    new THREE.Vector3(  50,  60, -360),  // P5  bay-south vista
-    new THREE.Vector3(-140,  66, -330),  // P6  U-turn outer (was -150,70,-280)
-    new THREE.Vector3(-175,  74, -255),  // P6b NEW U-turn apex — spreads the old 121° pinch over ~200m
-    new THREE.Vector3(  40,  97, -245),  // P7  MBS diagonal approach (+2y holds max pitch)
-    new THREE.Vector3( 105, 118, -220),  // P8  MBS close-pass (exact MBS delta from v15)
-    new THREE.Vector3( 125, 106, -158),  // P9  bay-mid view, east of the moved towers
-    new THREE.Vector3(  10,  98,  -75),  // P9b NEW turnaround apex north of ArtScience
-    new THREE.Vector3(-100,  95, -100),  // P10
-    new THREE.Vector3(-260, 102, -120),  // P11 CBD face (3m thread preserved)
-    new THREE.Vector3(-265, 108,   20),  // P12
-    new THREE.Vector3(-240, 108,  150),  // P13
-    new THREE.Vector3(-170, 102,  245),  // P14
-    new THREE.Vector3(   0,  90,  272)   // P15 rounds the Esplanade→start turn (was -20,92,285)
+    new THREE.Vector3( -60,  80,  290),  // P0  start — south-shore vista
+    new THREE.Vector3(  80,  75,  300),  // P1
+    new THREE.Vector3( 160,  80,  280),  // P2  turn NE, line up with the slab
+    new THREE.Vector3( 166, 123,  165),  // P3  climb done, enter the skim
+    new THREE.Vector3( 165, 126,   90),  // P4  ★ skypark skim, mid-slab
+    new THREE.Vector3( 158, 124,   40),  // P5  over the north cantilever
+    new THREE.Vector3( 148, 104,  -40),  // P6  exit past ArtScience, descending
+    new THREE.Vector3( 167,  98, -115),  // P7  directly over the Helix
+    new THREE.Vector3( 255,  95, -185),  // P8  Marina Centre bank, Flyer ahead
+    new THREE.Vector3( 330,  92, -270),  // P9  Flyer pass (+10 over the wheel)
+    new THREE.Vector3( 240,  92, -345),  // P10 turn W behind Suntec
+    new THREE.Vector3(  80,  92, -320),  // P11 westbound over Marina Centre
+    new THREE.Vector3( -80,  88, -265),  // P12 over the Esplanade
+    new THREE.Vector3(-160,  85, -185),  // P13 river mouth, Merlion below left
+    new THREE.Vector3(-248,  95,  -55),  // P14 CBD east-face run
+    new THREE.Vector3(-250, 100,  125),  // P15
+    new THREE.Vector3(-200,  95,  230)   // P16 SW corner, MBFC to the right
   ];
   // Tension 0.5 = standard centripetal Catmull-Rom (smoother than the old 0.4).
   const path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
@@ -4836,7 +4897,10 @@
     const rotorRear = new THREE.Mesh(rotorGeo, rotorMat);
     rotorRear.position.set(-7, 3.5, 0);
     g.add(rotorRear);
-    // Singapore flag (canvas-drawn 256×170)
+    // Singapore flag (canvas-drawn 256×170). v16: the plane's u=1 edge
+    // (local x=-10) is the side attached to the tow line — the HOIST — so
+    // the crescent+stars are drawn on the canvas RIGHT half. Drawn the old
+    // way (canvas-left) they ended up at the fly end: a mirrored flag.
     const flagCanvas = document.createElement('canvas');
     flagCanvas.width = 256; flagCanvas.height = 170;
     const fctx = flagCanvas.getContext('2d');
@@ -4845,9 +4909,9 @@
     fctx.fillStyle = '#ffffff';
     fctx.fillRect(0, 85, 256, 85);
     fctx.fillStyle = '#ffffff';
-    fctx.beginPath(); fctx.arc(60, 42, 26, 0, Math.PI * 2); fctx.fill();
+    fctx.beginPath(); fctx.arc(196, 42, 26, 0, Math.PI * 2); fctx.fill();
     fctx.fillStyle = '#dc3545';
-    fctx.beginPath(); fctx.arc(70, 42, 22, 0, Math.PI * 2); fctx.fill();
+    fctx.beginPath(); fctx.arc(186, 42, 22, 0, Math.PI * 2); fctx.fill();
     fctx.fillStyle = '#ffffff';
     function star(cx, cy, r) {
       fctx.beginPath();
@@ -4860,8 +4924,8 @@
       }
       fctx.closePath(); fctx.fill();
     }
-    star(110, 30, 6); star(135, 30, 6); star(160, 30, 6);
-    star(120, 50, 6); star(150, 50, 6);
+    star(146, 30, 6); star(121, 30, 6); star(96, 30, 6);
+    star(136, 50, 6); star(106, 50, 6);
     const flagTex = new THREE.CanvasTexture(flagCanvas);
     const flagMat = new THREE.MeshBasicMaterial({
       map: flagTex, side: THREE.DoubleSide, transparent: true
@@ -4925,7 +4989,10 @@
     const ang = (time / period) * Math.PI * 2;
     const r = 600;
     chinook.position.set(Math.cos(ang) * r, 250, Math.sin(ang) * r);
-    chinook.rotation.y = -ang + Math.PI / 2;
+    // v16: nose (local +x) along the orbit velocity (-sin, 0, cos). The old
+    // "-ang + PI/2" was exactly PI off — the chinook flew tail-first with
+    // the flag streaming AHEAD of it.
+    chinook.rotation.y = -ang - Math.PI / 2;
     chinook.userData.rotorFront.rotation.y = time * 30;
     chinook.userData.rotorRear.rotation.y = -time * 30;
     // D2: escorts hold formation off the same orbit — ±28 radial spread,
@@ -5423,9 +5490,9 @@
     [0.7, 0.30, 1.00], [0.7, 1.00, 0.30]
   ];
   const FW_SITES = [
-    { x: 0,   z: 0    },
-    { x: 60,  z: -185 },
-    { x: 70,  z: 270  }
+    { x: -20,  z: 20   },   // mid-bay
+    { x: 164,  z: 100  },   // MBS
+    { x: -105, z: -240 }    // Esplanade
   ];
   // Part A: NDP red/white — picked ~70% of the time when festive. Orthogonal
   // to the D4 site selection below: site says WHERE, palette says WHAT COLOR.
@@ -5435,11 +5502,11 @@
   // points along the promenade garland. Pure site-selection swap; the pool
   // itself is untouched.
   const FW_SITES_FESTIVE = [
-    { x: 195,  z: 175 },   // NS Square — the anchor
-    { x: 200,  z: -80 },   // promenade rim, south-east
-    { x: 0,    z: -70 },   // promenade rim, mid-south
-    { x: -180, z: 90  },   // civic rim, west
-    { x: 70,   z: 270 }    // Esplanade
+    { x: 105,  z: -192 },  // NS Square / the Float — the anchor
+    { x: 130,  z: -75  },  // east rim by the Helix mouth
+    { x: 40,   z: 235  },  // Marina Blvd rim, south
+    { x: -160, z: -40  },  // west rim by the Merlion
+    { x: -90,  z: -207 }   // Esplanade waterfront
   ];
   const fireworks = [];
   const FW_COUNT = isMobilePerf ? 2 : 3;
@@ -5586,7 +5653,7 @@
   // === v11: MBS SPECTRA LASERS (SUNSET ONLY) ===
   // 8 fanned light cones from the skypark, fading in/out on a 12s/18s cycle.
   const spectraGroup = new THREE.Group();
-  spectraGroup.position.set(-30, 115, -180);
+  spectraGroup.position.set(164, 115, 100);   // v16: rides the relocated MBS skypark
   const SPECTRA_COLORS = [
     0xff3344, 0xffffff, 0x44aaff, 0xffcc44,
     0xff44aa, 0x44ffcc, 0xffffff, 0xffcc44
@@ -6692,8 +6759,8 @@
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 
     if (game.state !== 'playing') {
-      camera.position.set(Math.cos(t * 0.1) * 380, 200, Math.sin(t * 0.1) * 380 - 50);
-      camera.lookAt(0, 70, -100);
+      camera.position.set(Math.cos(t * 0.1) * 380, 200, Math.sin(t * 0.1) * 380 + 20);
+      camera.lookAt(-15, 60, 25);   // v16: rebuilt bay center
       return;
     }
 

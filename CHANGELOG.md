@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v16] — 2026-06-10
+
+**Marina Bay rebuilt from the real map.** The old world was a mirror image of Singapore — it mapped north to +z, which in three.js (right-handed, y-up) flips east and west when rendered. v16 rebuilds the whole map from real lat/lon at 1:2 scale with north = −z, so what you see in flight finally matches Google Maps.
+
+### Changed
+- **Land rebuilt as one continuous mainland** wrapping the bay, like the real shoreline: CBD on the west shore behind Collyer Quay, civic district + Esplanade + the Float + Suntec + the Flyer along the north, ArtScience/MBS/Gardens by the Bay down the east, Marina Blvd on the south. The **Singapore River** notches the NW corner (a bumboat now runs it out to the Merlion), the bay's NE mouth is spanned by the **Helix Bridge on its true ~N–S axis**, the **Kallang basin** runs behind it, and **Bay East Garden** sits across the basin as a green island.
+- **Every landmark re-anchored to its real position** and verified on land by an offline point-in-polygon sweep — no more towers standing in the water. MBS's slab now runs N–S along the east shore with the cantilever prow pointing north toward ArtScience; ArtScience sits on its real bay-jutting promontory; the Float platform juts south from the north shore; the Merlion holds the river-mouth corner with the Fullerton just SW; MBFC anchors the SW corner; the Suntec/Millenia cluster rises NW of the Flyer.
+- **Flight path redesigned** as a counterclockwise bay tour in real compass order: south-shore vista → a long S→N **skypark skim down the full MBS slab** → over the Helix mouth → Flyer pass → Suntec turn → the Float and Esplanade → river mouth → CBD east-face run → MBFC corner. Offline drift-envelope sweep: zero centerline contacts; envelope contacts only at the four deliberately-reachable structures (MBS skypark, Flyer, two CBD towers). Lap ≈ 2050 m, max pitch ≈ 22°.
+- **Boats, ambient traffic, the shoreline garland, fireworks sites and the Spectra lasers** all re-anchored to the new geography (Spectra had been left behind at a pre-v15.1 MBS position).
+
+### Fixed
+- **The flag Chinook flew backwards** — its heading was exactly π off the orbit velocity, so it orbited tail-first with the flag streaming ahead of it.
+- **The Singapore flag was mirrored** — the crescent and stars were drawn at the fly end of the flag; they now sit at the hoist, where the tow line attaches.
+
+---
+
 ## [v15.1] — 2026-06-10
 
 **Geography remap.** Marina Bay now matches the real map: the Helix Bridge actually bridges something, NS Square and the Merlion sit on their proper shores, the Bayfront trio moved to the true south-east, and two new icons join the skyline.
