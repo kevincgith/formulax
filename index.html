@@ -3296,6 +3296,47 @@
     g.position.set(x, 0, z); return g;
   }
 
+  // === v15.1: FULLERTON HOTEL ===
+  // Low colonial palazzo at the mouth of the Singapore River, next door to
+  // the Merlion (real adjacency). One 128² colonnade canvas does the work:
+  // white columns over warm window slots, glowing gently at dusk via the
+  // shared facade dimmer. 3 meshes; heritage roof stays bare (no roofSlots).
+  function buildFullerton(x, z) {
+    const g = new THREE.Group();
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#e8e0cd'; ctx.fillRect(0, 0, 128, 128);   // stone
+    ctx.fillStyle = '#cfc6b0'; ctx.fillRect(0, 0, 128, 12);    // cornice
+    ctx.fillStyle = '#5a564e'; ctx.fillRect(0, 112, 128, 16);  // plinth
+    for (let i = 0; i < 16; i++) {                             // window slots
+      const wx = (i % 8) * 16 + 5, wy = i < 8 ? 28 : 72;
+      ctx.fillStyle = (i * 7) % 3 === 0 ? '#ffd890' : '#6a6258';
+      ctx.fillRect(wx, wy, 6, 26);
+    }
+    ctx.fillStyle = '#f7f2e4';                                 // columns
+    for (let i = 0; i <= 8; i++) ctx.fillRect(i * 16 - 2, 14, 5, 98);
+    // Same canvas as map + emissiveMap (the NS Square roof pattern): the
+    // warm slots read as lit hotel windows at sunset, emiScale keeps it soft.
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.MeshPhongMaterial({
+      map: tex, emissiveMap: tex, emissive: 0xffffff,
+      emissiveIntensity: 0.06, shininess: 25
+    });
+    mat.userData.emiScale = 0.5;
+    timeAware.facadeMaterials.push(mat);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 44), mat);
+    body.position.y = 10; body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(22, 1, 46),
+      new THREE.MeshPhongMaterial({ color: 0x8a8478 }));
+    roof.position.y = 20.5; roof.castShadow = true; g.add(roof);
+    // Entrance portico on the bay-facing (+x) side, toward the Merlion
+    const portico = new THREE.Mesh(new THREE.BoxGeometry(4, 12, 18), mat);
+    portico.position.set(11, 6, 0); portico.castShadow = true; g.add(portico);
+    g.position.set(x, 0, z); return g;
+  }
+
   // === D1: NS SQUARE (from the architectural render) ===
   // The new permanent NDP home: a white circular waterfront amphitheater
   // jutting into the bay, crowned with the red "SG" spiral roof. Anchored on
@@ -3702,6 +3743,9 @@
   st.rotation.y = Math.PI / 2;
   scene.add(st);                          addCollider(190, -255, 45, 64, 65);
   scene.add(merlion);                     addCollider(-165, 192, 12, 12, 32);
+  // v15.1: Fullerton Hotel beside the Merlion (real adjacency); P14 passes
+  // 80+ above the 24-high heritage roof.
+  scene.add(buildFullerton(-197, 228));   addCollider(-197, 228, 13, 25, 24);
   scene.add(buildEsplanade(70, 270));     addCollider(70, 270, 45, 30, 27);
   // D1: NS Square anchored on the Marina East shore (edge x≈191 at z=175) —
   // top of structure ~y 16, collider 22; the P0→P1 leg passes 77m west and
@@ -3744,6 +3788,22 @@
     scene.add(b);
     addCollider(x, z, 14, 14, b.userData.totalH + 2);
   }
+  // v15.1: MBFC trio on the Marina South west strip, across the channel from
+  // the CBD. The P10→P11 leg passes nearly overhead (T1 lateral ~6m at y≈99),
+  // so T1/T2 seeds are pinned to plain roofs — a crown there would be
+  // drift-contactable; the one setback crown goes on lateral-protected T3.
+  const mbfcTowers = [
+    [-204, -142, 22, 60, 2],   // T1 — plain roof (roll 17)
+    [-229, -167, 26, 72, 4],   // T2 — tallest, plain roof (roll 11)
+    [-203, -182, 24, 66, 3]    // T3 — setback crown (roll 4), totalH 80.5
+  ];
+  mbfcTowers.forEach(([x, z, fp, h, seed], i) => {
+    const b = buildBuilding(x, z, fp, h, fp, seed, cbdFacadeMats[i % cbdFacadeMats.length]);
+    scene.add(b);
+    addCollider(x, z, fp/2 + 3, fp/2 + 3, b.userData.totalH + 2);
+  });
+  // Plain beacon tip on T2 (no mast — a mast would close the P10→P11 margin)
+  warnBeaconTips.push([-229, 73.5, -167]);
 
   // === C3: ROOFTOP PROP KIT ===
   // One InstancedMesh of grey boxes scattered over every roof rect collected
