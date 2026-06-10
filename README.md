@@ -131,8 +131,8 @@ The whole match state is encoded in the URL itself — a uint32 seed plus level 
 Fly Again after losing a challenge replays the *same* questions for an immediate rematch.
 
 ### 🌆 Cinematic Marina Bay World
-- Stylised Singapore skyline (Merlion, bay, boats, water)
-- **NS Square landmark** on the NE shore — the fireworks anchor site
+- Stylised Singapore skyline, laid out true to the real map (v15.1): the Merlion spouts east into the bay with the **Fullerton Hotel** next door, the **Helix Bridge** spans the east channel with traffic crossing it, and **MBS, the ArtScience Museum and the Supertree Grove** hold the south-east Bayfront, opposite the CBD and the new **MBFC towers**
+- **NS Square landmark** anchored on the Marina East shore, platform over the water — the fireworks anchor site
 - **Lit window facades** across the whole skyline (shared materials, so it's cheap)
 - Rooftop props and blinking **aircraft-warning beacons** on the tall towers
 - **Ambient traffic** — dark specks by day, glowing light streams at dusk

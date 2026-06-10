@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v15.1] — 2026-06-10
+
+**Geography remap.** Marina Bay now matches the real map: the Helix Bridge actually bridges something, NS Square and the Merlion sit on their proper shores, the Bayfront trio moved to the true south-east, and two new icons join the skyline.
+
+### Added
+- **Fullerton Hotel** — a low colonial palazzo beside the Merlion (real adjacency), with a colonnade facade that glows warmly at dusk.
+- **MBFC towers** — a trio of dark-glass financial-centre towers on the Marina South west strip, with a blinking beacon on the tallest.
+- **Marina East promenade + garland extension** — the shoreline light garland now crosses the Helix deck and runs up the east shore past NS Square, with matching walking paths.
+
+### Changed
+- **Helix Bridge** re-anchored over the real east channel — both deck ends land on the Marina South / Marina East banks, and the ambient traffic route crosses it. The central bay is now collider-free for boats.
+- **NS Square** anchored on the Marina East shore: grandstand on land, circular platform jutting west over the water — the real Float anchoring. Festive fireworks anchor moved with it.
+- **Merlion** moved to the civic water's edge, rotated to spout **east into the bay**.
+- **Bayfront accuracy** — MBS, the ArtScience Museum (disk rim now touching the shoreline) and the Supertree Grove (rotated so the grove elongates north–south, like the real Gardens) shifted to the true south-east Bayfront.
+- **Flight path retuned** around the moved MBS: the skypark close-pass is geometrically identical relative to the building; the descent leg now passes east of the towers. Re-verified offline — same answer-cadence envelope as v15 (9–11 s average gaps, ≥2.9 s sightlines at top speed) and the same three deliberately-reachable structures in the drift-envelope sweep, with zero centerline contacts. Lap 2587 m → 2697 m.
+
+---
+
 ## [v15] — 2026-06-10
 
 **Singapore Flavor Pack + a Cities: Skylines world pass.** Singlish cheers, a full National Day mode, an NS Square landmark, a skyline rebuilt on shared lit-facade materials, a Gold Cockpit UI refresh, pacing v3, and privacy-first analytics that ship switched off.
