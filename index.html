@@ -327,11 +327,50 @@
     --safe-right:  env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left:   env(safe-area-inset-left, 0px);
+
+    /* === v15 Part B: "Gold Cockpit" design tokens ===
+       Everything pressable is gold; everything informational is cyan
+       ink-glass; social is magenta; red only warns. */
+    --gold:        #ffcc44;   /* pressable / brand */
+    --gold-bright: #ffe9aa;   /* gold text on dark */
+    --gold-deep:   #d99a1a;   /* gold gradient base */
+    --gold-line:   rgba(255, 204, 68, 0.6);
+    --gold-tint:   rgba(255, 204, 68, 0.10);
+    --cyan:        #00ddee;   /* informational line */
+    --cyan-bright: #aaf6ff;   /* cyan text on dark */
+    --cyan-line:   rgba(0, 220, 255, 0.35);
+    --cyan-tint:   rgba(0, 200, 220, 0.08);
+    --magenta:     #ff5cb3;   /* social (challenge / vs) */
+    --magenta-line:rgba(255, 92, 179, 0.65);
+    --danger:      #ff5566;   /* warnings only */
+    --danger-line: rgba(255, 85, 102, 0.6);
+    --ink:         rgba(8, 16, 28, 0.78);  /* shared panel background */
+    --sg-red:      #ee2536;   /* reserved: National Day mode (Part A) */
+
+    --r-card: 16px;
+    --r-btn:  12px;
+    --r-pill: 999px;
+
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;  --sp-4: 16px;  --sp-5: 24px;
+
+    /* Display type = the logo's heavy-italic stack. UI type = system stack.
+       Letter-spacing lives ONLY on display type. No webfonts. */
+    --font-display: 'Arial Black', 'Helvetica Neue', sans-serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  /* Part A seam: National Day mode re-skins the gold family to red/white by
+     overriding tokens only. Inert until Part A adds body.festive. */
+  body.festive {
+    --gold:        var(--sg-red);
+    --gold-bright: #ffffff;
+    --gold-deep:   #a81322;
+    --gold-line:   rgba(238, 37, 54, 0.65);
+    --gold-tint:   rgba(238, 37, 54, 0.12);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0; overflow: hidden; background: #0a0510;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-ui);
     color: #fff;
     user-select: none; -webkit-user-select: none;
     width: 100%; height: 100vh; height: 100dvh;
@@ -355,7 +394,7 @@
   }
   #boot.hide { opacity: 0; pointer-events: none; }
   #boot .boot-logo {
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(34px, 9vw, 56px);
@@ -369,7 +408,6 @@
   #boot .boot-status {
     margin-top: 24px;
     font-size: 13px;
-    letter-spacing: 3px;
     color: #aaccdd;
     opacity: 0.6;
   }
@@ -398,7 +436,7 @@
   }
   #error-fallback.show { display: flex; }
   #error-fallback h2 {
-    font-size: 24px; letter-spacing: 3px;
+    font-size: 24px;
     margin: 0 0 12px;
     color: #ff9aa6;
   }
@@ -416,10 +454,9 @@
     position: absolute; top: calc(clamp(70px, 13vh, 140px) + var(--safe-top)); left: 50%;
     transform: translateX(-50%);
     padding: clamp(8px, 2vw, 14px) clamp(18px, 5vw, 36px);
-    background: rgba(8, 16, 28, 0.7);
-    border: 1px solid rgba(0, 220, 255, 0.4);
-    border-radius: 12px;
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-btn);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
     max-width: calc(100vw - 32px);
   }
@@ -442,12 +479,11 @@
     transform: translateX(-50%);
     width: clamp(180px, 36vw, 300px);
     height: clamp(28px, 5vh, 38px);
-    border-radius: 999px;
-    background: rgba(8, 16, 28, 0.7);
-    border: 1px solid rgba(0, 220, 255, 0.35);
+    border-radius: var(--r-pill);
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     overflow: hidden;
     z-index: 8;
     pointer-events: none;
@@ -477,7 +513,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(13px, 2.6vw, 18px);
@@ -520,37 +556,53 @@
     #zoom-bar.full { animation: none; }
   }
 
-  /* === STATS === */
+  /* === STATS ===
+     v15 Part B: trimmed to Lives + Score. Flow surfaces as a gold badge
+     below the panel only at ×2 and up; Streak/Best left the HUD. */
   #stats {
     position: absolute; top: calc(16px + var(--safe-top)); right: calc(14px + var(--safe-right));
     padding: clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 18px);
-    background: rgba(8, 16, 28, 0.55);
-    border: 1px solid rgba(0, 220, 255, 0.25);
-    border-radius: 10px;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-btn);
     min-width: clamp(110px, 24vw, 140px);
   }
   .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .stat-row + .stat-row { margin-top: 4px; }
-  .stat-label { font-size: clamp(8px, 1.8vw, 10px); text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.65; }
+  .stat-label { font-size: clamp(10px, 2.2vw, 12px); opacity: 0.7; }
   .stat-value { font-size: clamp(16px, 4vw, 22px); font-weight: 700; }
   .stat-value.lives { color: #ff7a8a; }
   .stat-value.lives.hi { color: #4dff9e; }
-  .stat-value.mult { color: #aaccff; transition: color 0.2s, text-shadow 0.2s; }
-  .stat-value.mult.tier2 { color: #ffe9aa; text-shadow: 0 0 8px rgba(255, 220, 100, 0.6); }
-  .stat-value.mult.tier3 { color: #ffaa66; text-shadow: 0 0 12px rgba(255, 150, 80, 0.7); }
-  .stat-value.mult.tier4 { color: #ff66cc; text-shadow: 0 0 16px rgba(255, 100, 200, 0.85); }
+  /* Flow badge: hidden until the multiplier kicks in at ×2 */
+  #flow-badge {
+    display: none;
+    margin-top: 6px;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--gold-line);
+    background: var(--gold-tint);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(12px, 2.8vw, 15px);
+    letter-spacing: 1px;
+    color: var(--gold-bright);
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+  #flow-badge.show { display: flex; }
+  #flow-badge.tier3 { color: #ffaa66; text-shadow: 0 0 12px rgba(255, 150, 80, 0.7); }
+  #flow-badge.tier4 { color: #ff66cc; border-color: var(--magenta-line); text-shadow: 0 0 16px rgba(255, 100, 200, 0.85); }
 
   /* === DESKTOP KEYBOARD HINTS === */
   #ingame-settings {
     position: absolute; top: calc(16px + var(--safe-top)); left: calc(14px + var(--safe-left));
     padding: 8px 14px;
-    background: rgba(8, 16, 28, 0.55);
-    border: 1px solid rgba(0, 220, 255, 0.25);
-    border-radius: 10px;
-    font-size: 11px; letter-spacing: 1.5px;
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-btn);
+    font-size: 11px;
     line-height: 1.7; opacity: 0.7;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
   #ingame-settings .key { color: #00ddff; font-weight: 700; }
   #ingame-settings .state { color: #aaffcc; font-weight: 700; }
@@ -568,16 +620,16 @@
   body.is-touch #icon-settings { display: flex; }
   .icon-btn {
     width: 46px; height: 46px;
-    background: rgba(8, 16, 28, 0.6);
-    border: 1px solid rgba(0, 220, 255, 0.3);
-    border-radius: 10px;
-    color: #aaf6ff; font-size: 20px; cursor: pointer;
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-btn);
+    color: var(--cyan-bright); font-size: 20px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     touch-action: manipulation;
   }
   .icon-btn.off { color: #ff9999; opacity: 0.6; }
   .icon-btn:active { background: rgba(0, 220, 255, 0.18); }
+  .icon-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   /* v13: Speed Mode icon — gold glow when active. */
   #btn-speed.on {
     color: #fff4c4;
@@ -609,9 +661,9 @@
     position: absolute; bottom: calc(14px + var(--safe-bottom));
     left: 50%; transform: translateX(-50%);
     font-size: clamp(10px, 2vw, 12px);
-    letter-spacing: 1.5px; opacity: 0.65;
+    opacity: 0.65;
     padding: 6px 14px;
-    background: rgba(0,0,0,0.35); border-radius: 6px;
+    background: rgba(0,0,0,0.35); border-radius: var(--r-pill);
     white-space: nowrap;
   }
   body.is-touch #controls { display: none; }
@@ -638,17 +690,17 @@
   #feedback .sub {
     display: block; font-size: clamp(12px, 3vw, 18px);
     opacity: 0.85; margin-top: 6px;
-    letter-spacing: 2px; font-weight: 600;
+    font-weight: 600;
   }
 
   #toast {
     position: absolute; bottom: calc(195px + var(--safe-bottom));
     left: 50%; transform: translateX(-50%);
     padding: 8px 16px;
-    background: rgba(0, 30, 50, 0.85);
-    border: 1px solid rgba(0, 220, 255, 0.4);
-    border-radius: 6px;
-    font-size: 13px; letter-spacing: 2px;
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-pill);
+    font-size: 13px;
     opacity: 0; transition: opacity 0.25s;
     white-space: nowrap;
   }
@@ -752,7 +804,7 @@
     overflow: hidden;
   }
   #zoom-flash span {
-    font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(80px, 22vw, 260px);
@@ -789,7 +841,6 @@
     background: rgba(0, 30, 50, 0.42);
     border: 2px solid rgba(0, 220, 255, 0.45);
     pointer-events: auto; touch-action: none;
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 6px 18px rgba(0,0,0,0.4);
     z-index: 5; display: none;
   }
@@ -833,7 +884,6 @@
     cursor: pointer;
     user-select: none; -webkit-user-select: none;
     touch-action: none;
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     transition: transform 0.08s, background 0.08s;
   }
@@ -850,13 +900,128 @@
   #title {
     position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(0,15,30,0.94) 0%, rgba(8,30,55,0.94) 50%, rgba(0,15,30,0.94) 100%);
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center;
+    /* v15 Part B: `safe center` never clips the top of overflowing content
+       (the old plain `center` + overflow-y:auto could). Flex-start fallback
+       for engines without safe alignment. */
+    justify-content: flex-start;
+    justify-content: safe center;
     flex-direction: column;
     pointer-events: auto; z-index: 10;
     padding: 20px;
     padding-top: calc(20px + var(--safe-top));
     padding-bottom: calc(20px + var(--safe-bottom));
     overflow-y: auto;
+  }
+
+  /* === v15 Part B: SHARED COMPONENTS ===
+     One card shape, one pill shape, game-wide. */
+  .card {
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-card);
+  }
+  .card--gold    { border-color: var(--gold-line); }
+  .card--magenta { border-color: var(--magenta-line); }
+  .card--danger  { border-color: var(--danger-line); }
+
+  /* Segmented controls: real inputs stay (Settings JS reads name/value/id),
+     visually hidden; the sibling <span> is the 44px+ pill. */
+  .seg {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: var(--sp-1);
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-pill);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .seg .picker-label {
+    padding: 0 var(--sp-2) 0 var(--sp-3);
+    font-size: clamp(11px, 2.4vw, 13px);
+    opacity: 0.75;
+  }
+  .seg label {
+    position: relative;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .seg input[type=radio],
+  .seg input[type=checkbox] {
+    position: absolute;
+    opacity: 0;
+    width: 100%; height: 100%;
+    left: 0; top: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .seg input + span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 clamp(12px, 3vw, 18px);
+    border-radius: var(--r-pill);
+    font-size: clamp(12px, 2.8vw, 14px);
+    font-weight: 600;
+    color: var(--cyan-bright);
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .seg label:hover input:not(:checked) + span { background: rgba(255, 255, 255, 0.08); }
+  .seg input:checked + span {
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold) 55%, var(--gold-deep));
+    color: #221a02;
+    font-weight: 800;
+    box-shadow: 0 2px 10px rgba(255, 204, 68, 0.35);
+  }
+  .seg input:focus-visible + span {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+  /* Standalone toggle pill (Sound / Auto-center) — same anatomy, no group shell */
+  label.seg-toggle {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .seg-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 100%; height: 100%;
+    left: 0; top: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .seg-toggle input + span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 clamp(14px, 3vw, 18px);
+    border-radius: var(--r-pill);
+    border: 1px solid var(--cyan-line);
+    background: var(--ink);
+    font-size: clamp(12px, 2.8vw, 14px);
+    font-weight: 600;
+    color: var(--cyan-bright);
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .seg-toggle input:checked + span {
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold) 55%, var(--gold-deep));
+    border-color: var(--gold-line);
+    color: #221a02;
+    font-weight: 800;
+    box-shadow: 0 2px 10px rgba(255, 204, 68, 0.35);
+  }
+  .seg-toggle input:focus-visible + span {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
   }
 
   /* Aviation/military-style logo: star above, side-by-side type over centered wings */
@@ -949,7 +1114,7 @@
   .topgun-logo .top-line,
   .topgun-logo .sum-line {
     display: block;
-    font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     text-transform: uppercase;
@@ -968,7 +1133,7 @@
   }
 
   .topgun-subtitle {
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(12px, 2.6vw, 16px);
@@ -981,146 +1146,131 @@
     opacity: 1;
   }
 
-  /* "made for my kids" credit */
+  /* "made for my kids" — small lowercase footer at the very bottom */
   .credit-line {
     font-size: clamp(10px, 2vw, 12px);
-    letter-spacing: clamp(2px, 0.7vw, 4px);
     color: #aaccdd;
-    opacity: 0.7;
-    margin-bottom: clamp(14px, 3vw, 22px);
-    text-transform: uppercase;
-    font-weight: 600;
+    opacity: 0.55;
+    margin-top: clamp(14px, 3vw, 22px);
+    text-transform: lowercase;
+    font-weight: 500;
   }
 
   #title .best-pill {
-    margin-bottom: clamp(14px, 3vw, 22px);
-    padding: 6px 18px;
-    background: rgba(255, 220, 100, 0.08);
-    border: 1px solid rgba(255, 220, 100, 0.4);
-    border-radius: 999px;
-    font-size: clamp(11px, 2.4vw, 13px);
-    letter-spacing: 2px;
-    color: #ffe9aa;
+    margin-bottom: clamp(12px, 2.6vw, 18px);
+    padding: 8px 18px;
+    background: var(--gold-tint);
+    border: 1px solid var(--gold-line);
+    border-radius: var(--r-pill);
+    font-size: clamp(12px, 2.6vw, 14px);
+    font-weight: 700;
+    color: var(--gold-bright);
     display: none;
   }
   #title .best-pill.show { display: block; }
 
+  /* 2×2 level grid — the real CTA, above the fold. All four gold-family so
+     no single level reads as pre-selected. */
   .diff-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px; width: 100%; max-width: 720px;
-  }
-  @media (max-width: 600px) {
-    .diff-row { grid-template-columns: repeat(2, 1fr); max-width: 360px; }
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px; width: 100%; max-width: 440px;
   }
   .diff-btn {
+    min-height: 44px;
     padding: clamp(12px, 3vw, 18px) clamp(14px, 3vw, 22px);
-    background: rgba(0, 200, 220, 0.08);
-    color: #aaf6ff;
-    border: 1px solid #00ddee; border-radius: 8px;
-    cursor: pointer; font-weight: 700;
-    letter-spacing: 2px; text-transform: uppercase;
-    font-size: clamp(12px, 2.8vw, 14px); line-height: 1.4;
+    background: var(--gold-tint);
+    color: var(--gold-bright);
+    border: 1px solid var(--gold-line); border-radius: var(--r-btn);
+    cursor: pointer; font-weight: 800;
+    font-family: var(--font-display);
+    font-style: italic;
+    letter-spacing: 1px; text-transform: uppercase;
+    font-size: clamp(13px, 3vw, 15px); line-height: 1.4;
     transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
     touch-action: manipulation;
   }
   .diff-btn:active, .diff-btn:hover {
-    background: rgba(0, 220, 240, 0.18);
+    background: rgba(255, 220, 100, 0.2);
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0, 220, 240, 0.25);
-  }
-  .diff-btn small {
-    display: block; margin-top: 4px;
-    opacity: 0.75;
-    font-size: clamp(11px, 2.5vw, 14px);
-    letter-spacing: 3px; font-weight: 600;
-  }
-  .diff-btn.tiny {
-    border-color: #ffcc44; color: #ffe9aa;
-    background: rgba(255, 204, 68, 0.06);
-  }
-  .diff-btn.tiny:active, .diff-btn.tiny:hover {
-    background: rgba(255, 220, 100, 0.18);
     box-shadow: 0 6px 18px rgba(255, 220, 100, 0.25);
   }
+  .diff-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .diff-btn small {
+    display: block; margin-top: 4px;
+    opacity: 0.8;
+    font-family: var(--font-ui);
+    font-style: normal;
+    font-size: clamp(11px, 2.5vw, 14px);
+    letter-spacing: 0; text-transform: none; font-weight: 600;
+  }
+  .diff-btn .lvl-glyph {
+    display: block;
+    font-size: clamp(22px, 5vw, 30px);
+    line-height: 1.1;
+    margin-bottom: 2px;
+  }
+  /* Secondary action: cyan outline (Menu / Restart / Cancel / "later") */
+  .diff-btn.btn-secondary {
+    background: var(--cyan-tint);
+    color: var(--cyan-bright);
+    border-color: var(--cyan);
+    font-family: var(--font-ui);
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0; text-transform: none;
+  }
+  .diff-btn.btn-secondary:active, .diff-btn.btn-secondary:hover {
+    background: rgba(0, 220, 240, 0.18);
+    box-shadow: 0 6px 18px rgba(0, 220, 240, 0.25);
+  }
+
+  /* Compact quick-settings row: Sound + Auto-center pills + the ⚙ that
+     expands the full parental settings panel (collapsed by default). */
+  .quick-row {
+    margin-top: clamp(14px, 3vw, 20px);
+    display: flex; gap: var(--sp-2); flex-wrap: wrap;
+    justify-content: center; align-items: center;
+  }
+  #btn-settings-toggle {
+    min-height: 44px; min-width: 44px;
+    padding: 0 clamp(14px, 3vw, 18px);
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--ink);
+    border: 1px solid var(--cyan-line);
+    border-radius: var(--r-pill);
+    color: var(--cyan-bright);
+    font-family: var(--font-ui);
+    font-size: clamp(12px, 2.8vw, 14px);
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #btn-settings-toggle:hover, #btn-settings-toggle:active { background: rgba(0, 220, 255, 0.12); }
+  #btn-settings-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  #btn-settings-toggle[aria-expanded="true"] { border-color: var(--cyan); background: rgba(0, 220, 255, 0.12); }
 
   .settings {
-    margin-top: clamp(18px, 4vw, 26px);
-    display: flex; gap: clamp(10px, 3vw, 24px); flex-wrap: wrap;
+    margin-top: clamp(12px, 2.6vw, 18px);
+    display: flex; gap: var(--sp-3); flex-wrap: wrap;
     justify-content: center; align-items: center;
     font-size: clamp(11px, 2.5vw, 13px);
-    opacity: 0.85; letter-spacing: 1.5px;
   }
-  .settings label {
-    display: flex; align-items: center; gap: 8px;
-    cursor: pointer; padding: 8px 14px;
-    border-radius: 6px;
-    transition: background 0.15s;
-    touch-action: manipulation;
-  }
-  .settings label:active, .settings label:hover { background: rgba(255,255,255,0.08); }
-  .settings input[type=checkbox],
-  .settings input[type=radio] {
-    width: 18px; height: 18px;
-    accent-color: #00ddee; cursor: pointer;
-  }
+  .settings[hidden] { display: none; }
 
-  #time-picker {
-    display: flex;
-    align-items: center; gap: 10px;
-    padding: 8px 14px;
-    border: 1px dashed rgba(255, 200, 100, 0.35);
-    border-radius: 8px;
-    flex-wrap: wrap; justify-content: center;
-  }
-  #time-picker .picker-label {
-    opacity: 0.75;
-    font-size: clamp(10px, 2.2vw, 12px);
-    letter-spacing: 2px;
-    color: #ffe9aa;
-  }
-
-  /* v13.1: Speed Mode 3-state picker — same shape as time-picker, gold tint
-     to match the ⚡ icon family. */
-  #speed-picker {
-    display: flex;
-    align-items: center; gap: 10px;
-    padding: 8px 14px;
-    border: 1px dashed rgba(255, 220, 100, 0.4);
-    border-radius: 8px;
-    flex-wrap: wrap; justify-content: center;
-  }
-  #speed-picker .picker-label {
-    opacity: 0.78;
-    font-size: clamp(10px, 2.2vw, 12px);
-    letter-spacing: 2px;
-    color: #fff0c4;
-  }
-
-  #control-picker {
-    display: none;
-    align-items: center; gap: 10px;
-    padding: 8px 14px;
-    border: 1px dashed rgba(0, 220, 255, 0.35);
-    border-radius: 8px;
-    flex-wrap: wrap; justify-content: center;
-  }
+  #control-picker { display: none; }
   body.is-touch #control-picker { display: flex; }
-  #control-picker .picker-label {
-    opacity: 0.7;
-    font-size: clamp(10px, 2.2vw, 12px);
-    letter-spacing: 2px;
-  }
 
-  #title .hint {
-    margin-top: clamp(18px, 4vw, 26px);
-    font-size: clamp(10px, 2vw, 11px);
-    opacity: 0.5; letter-spacing: 2px;
-    text-align: center; line-height: 1.6;
-    max-width: 90%;
+  /* 3-pictogram one-liner — hidden for good once the player has onboarded */
+  #hint-strip {
+    margin-top: clamp(14px, 3vw, 20px);
+    font-size: clamp(12px, 2.7vw, 14px);
+    opacity: 0.8;
+    text-align: center; line-height: 1.7;
+    max-width: 92%;
   }
-  body.is-touch #title .hint .desktop-only { display: none; }
-  body:not(.is-touch) #title .hint .touch-only { display: none; }
+  #hint-strip[hidden] { display: none; }
 
   /* === GAME OVER === */
   #gameover {
@@ -1135,31 +1285,56 @@
     padding-bottom: calc(20px + var(--safe-bottom));
   }
   #gameover.show { display: flex; }
+  /* v15 Part B: hierarchy flip — FINAL SCORE is the biggest thing on the
+     screen; "FLIGHT OVER" becomes a modest header above it. */
   #gameover h2 {
-    font-size: clamp(36px, 9vw, 56px);
-    margin: 0 0 16px;
-    letter-spacing: clamp(3px, 1.5vw, 6px);
+    font-size: clamp(18px, 4.6vw, 26px);
+    margin: 0 0 8px;
+    font-family: var(--font-display);
+    font-style: italic;
+    letter-spacing: clamp(2px, 0.8vw, 4px);
     font-weight: 900;
     background: linear-gradient(90deg, #ff8888, #ffbb55);
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
   }
+  #gameover .final-score {
+    display: flex; flex-direction: column; align-items: center;
+    margin: 4px 0 clamp(8px, 2vw, 14px);
+    text-align: center;
+  }
+  #gameover .final-score .final-label {
+    font-size: clamp(12px, 2.7vw, 14px);
+    opacity: 0.8;
+  }
+  #gameover .final-score b {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(56px, 16vw, 96px);
+    line-height: 1.05;
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+    background: linear-gradient(180deg, #fffaea 0%, #ffe896 18%, #ffd24a 42%, #ffaa28 70%, #c98414 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 28px rgba(255, 200, 80, 0.35);
+  }
   #gameover .score-line {
-    font-size: clamp(15px, 3.4vw, 18px);
-    margin: 4px 0; letter-spacing: 2px;
+    font-size: clamp(14px, 3.2vw, 16px);
+    margin: 3px 0;
     opacity: 0.9; text-align: center;
   }
-  #gameover .score-line b { color: #ffe9aa; font-weight: 800; }
+  #gameover .score-line b { color: var(--gold-bright); font-weight: 800; }
   #gameover .new-best {
     display: none;
-    margin-top: 14px;
+    margin-top: 10px;
     padding: 8px 18px;
     background: linear-gradient(90deg, rgba(255, 220, 100, 0.2), rgba(255, 150, 80, 0.2));
-    border: 1px solid rgba(255, 220, 100, 0.5);
-    border-radius: 999px;
-    font-weight: 800; letter-spacing: 3px;
-    color: #ffe9aa;
+    border: 1px solid var(--gold-line);
+    border-radius: var(--r-pill);
+    font-weight: 800;
+    color: var(--gold-bright);
     font-size: clamp(13px, 3vw, 16px);
     animation: pulseBest 1.4s ease-in-out infinite;
   }
@@ -1218,9 +1393,9 @@
   .crash-modal {
     max-width: 420px; width: 100%;
     padding: clamp(20px, 5vw, 32px);
-    background: linear-gradient(180deg, rgba(60, 14, 24, 0.96), rgba(30, 6, 14, 0.96));
-    border: 1px solid rgba(255, 90, 120, 0.55);
-    border-radius: 14px;
+    background: var(--ink);
+    border: 1px solid var(--danger-line);
+    border-radius: var(--r-card);
     box-shadow: 0 0 32px rgba(255, 60, 90, 0.35);
     text-align: center;
     animation: crashModalIn 0.22s ease-out;
@@ -1241,6 +1416,8 @@
   }
   .crash-modal h3 {
     font-size: clamp(20px, 5vw, 26px);
+    font-family: var(--font-display);
+    font-style: italic;
     letter-spacing: clamp(2px, 0.8vw, 4px);
     margin: 0 0 10px;
     font-weight: 900;
@@ -1253,7 +1430,6 @@
     color: #f0d6dc;
     opacity: 0.85;
     margin: 0 0 22px;
-    letter-spacing: 0.5px;
   }
   .crash-buttons {
     display: flex; gap: 10px; flex-wrap: wrap;
@@ -1284,23 +1460,30 @@
   }
   #pause-overlay.show { display: flex; }
   .pause-card {
-    background: linear-gradient(165deg, #1a1530, #0e0a1f);
-    border: 2px solid #4a3878; border-radius: 18px;
     padding: 26px 28px; max-width: 320px; width: 86%;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
     text-align: center;
   }
   .pause-card h3 {
-    margin: 0 0 18px; font-size: 26px; letter-spacing: 3px;
-    color: #ffd966; font-family: 'Arial Black', sans-serif;
+    margin: 0 0 14px; font-size: 26px; letter-spacing: 3px;
+    font-style: italic;
+    color: #ffd966; font-family: var(--font-display);
+  }
+  /* Set-and-forget toggles relocated from the in-flight icon column */
+  .pause-toggles {
+    display: flex; gap: var(--sp-2); justify-content: center;
+    margin-bottom: 14px;
   }
   .pause-card .diff-btn {
     width: 100%; margin: 6px 0; min-width: 0;
   }
   .pause-card .pause-end {
-    border-color: #ff5566 !important;
+    border-color: var(--danger) !important;
     color: #ffaab2 !important;
     background: rgba(255, 60, 90, 0.10);
+    font-family: var(--font-ui);
+    font-style: normal;
+    letter-spacing: 0; text-transform: none;
   }
 
   /* === v11: ONBOARDING OVERLAY === */
@@ -1311,8 +1494,7 @@
   }
   #onboard-overlay.show { opacity: 1; }
   .onboard-card {
-    background: rgba(20, 14, 40, 0.85); border: 2px solid #ffd966;
-    border-radius: 18px; padding: 22px 28px; text-align: center;
+    padding: 22px 28px; text-align: center;
     box-shadow: 0 8px 40px rgba(255, 200, 80, 0.4);
     max-width: 86%;
   }
@@ -1340,7 +1522,8 @@
   }
   .onboard-text {
     color: #ffd966; font-size: 28px; font-weight: 900;
-    letter-spacing: 2px; font-family: 'Arial Black', sans-serif;
+    letter-spacing: 2px; font-family: var(--font-display);
+    font-style: italic;
     text-shadow: 0 0 12px rgba(255, 200, 80, 0.6);
   }
 
@@ -1350,7 +1533,7 @@
     display: none;
     background: rgba(20, 14, 40, 0.94); border: 2px solid #ffd966;
     border-radius: 14px; padding: 10px 16px; color: #ffd966;
-    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    font-size: 14px; font-weight: 700;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
     animation: tipBounce 0.7s ease-in-out infinite;
   }
@@ -1374,8 +1557,6 @@
   }
   #unlock-celebration.show { display: flex; }
   .unlock-card {
-    background: linear-gradient(160deg, #2a1f50, #140a30);
-    border: 3px solid #ffd966; border-radius: 22px;
     padding: 32px 30px; max-width: 360px; width: 86%;
     text-align: center; position: relative;
     box-shadow: 0 30px 80px rgba(255, 200, 80, 0.4),
@@ -1391,7 +1572,8 @@
   #uc-name {
     color: #ffd966; font-size: 28px; font-weight: 900;
     letter-spacing: 3px; margin-bottom: 8px;
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
+    font-style: italic;
     text-shadow: 0 0 20px rgba(255, 200, 80, 0.6);
   }
   #uc-desc {
@@ -1411,17 +1593,12 @@
   #vs-block {
     margin: clamp(8px, 2vw, 14px) auto clamp(12px, 3vw, 18px);
     padding: clamp(10px, 2.5vw, 16px) clamp(16px, 3.5vw, 24px);
-    border: 1.5px dashed rgba(255, 80, 180, 0.7);
-    border-radius: 12px;
-    background:
-      radial-gradient(ellipse at center, rgba(255, 80, 180, 0.10) 0%, transparent 70%),
-      rgba(20, 8, 30, 0.55);
     box-shadow: 0 0 22px rgba(255, 80, 180, 0.30);
     max-width: 360px;
     text-align: center;
   }
   .vs-headline {
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(13px, 3vw, 18px);
@@ -1437,7 +1614,6 @@
     padding: 4px clamp(4px, 1vw, 8px);
     font-size: clamp(13px, 2.6vw, 16px);
     color: #ffd9ee;
-    letter-spacing: 1px;
   }
   .vs-row b {
     color: #ffffff;
@@ -1446,7 +1622,7 @@
   }
   .vs-verdict {
     margin-top: clamp(6px, 1.4vw, 10px);
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(14px, 3.2vw, 19px);
@@ -1473,11 +1649,6 @@
   #challenge-banner {
     margin: clamp(8px, 2vw, 14px) 0;
     padding: clamp(10px, 2.5vw, 16px) clamp(14px, 3vw, 22px);
-    border: 1.5px dashed rgba(255, 80, 180, 0.7);
-    border-radius: 12px;
-    background:
-      radial-gradient(ellipse at center, rgba(255, 80, 180, 0.10) 0%, transparent 70%),
-      rgba(20, 8, 30, 0.55);
     box-shadow: 0 0 24px rgba(255, 80, 180, 0.30);
     text-align: center;
     max-width: 460px;
@@ -1488,7 +1659,7 @@
     50%      { box-shadow: 0 0 32px rgba(255, 80, 180, 0.55); border-color: rgba(255, 140, 220, 0.95); }
   }
   #challenge-banner .challenge-headline {
-    font-family: 'Arial Black', sans-serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 900;
     font-size: clamp(16px, 3.8vw, 22px);
@@ -1501,7 +1672,6 @@
     font-size: clamp(11px, 2.4vw, 14px);
     color: #ffd9ee;
     opacity: 0.95;
-    letter-spacing: 1px;
     margin-bottom: clamp(10px, 2.2vw, 14px);
     line-height: 1.5;
   }
@@ -1533,7 +1703,7 @@
   /* === v11: TITLE-SCREEN UNLOCK HINT === */
   .title-unlock-hint {
     color: #f7c948; font-size: clamp(11px, 2.5vw, 14px);
-    margin-top: 6px; opacity: 0; letter-spacing: 0.5px;
+    margin-top: 6px; opacity: 0;
     animation: hintPulse 2.5s ease-in-out infinite;
   }
   .title-unlock-hint.show { display: block; }
@@ -1542,14 +1712,14 @@
     50% { opacity: 1; }
   }
 
-  /* === v11: SUNSET LOCKED STATE === */
-  #time-picker label.locked {
-    opacity: 0.45; cursor: not-allowed;
-    text-decoration: line-through;
+  /* === v11: SUNSET LOCKED STATE === (restyled for the v15 pill anatomy) */
+  #time-picker label.locked { cursor: not-allowed; }
+  #time-picker label.locked input + span {
+    opacity: 0.45;
   }
-  #time-picker label.locked::after {
+  #time-picker label.locked input + span::after {
     content: ' 🔒';
-    text-decoration: none; display: inline-block; opacity: 1;
+    display: inline-block; opacity: 1; margin-left: 4px;
   }
   .locked-hint {
     display: block; font-size: 10px; opacity: 0.7;
@@ -1723,10 +1893,10 @@
     color: #ffe9aa;
     animation: btnUnlockGlow 1.7s ease-in-out infinite;
   }
-  body.sunset-pending #time-picker label.sunset-opt {
+  body.sunset-pending #time-picker label.sunset-opt input:not(:checked) + span {
     border: 1px solid rgba(255, 217, 102, 0.7);
-    border-radius: 6px;
-    color: #ffe9aa;
+    border-radius: var(--r-pill);
+    color: var(--gold-bright);
     animation: btnUnlockGlow 1.7s ease-in-out infinite;
   }
   @keyframes btnUnlockGlow {
@@ -1740,11 +1910,11 @@
 <div id="boot">
   <div class="boot-logo">TOP SUM</div>
   <div class="boot-spinner"></div>
-  <div class="boot-status">PREPARING FLIGHT…</div>
+  <div class="boot-status">Preparing flight…</div>
 </div>
 
 <div id="error-fallback">
-  <h2>UNABLE TO TAKE OFF</h2>
+  <h2>Unable to take off</h2>
   <p>This game needs WebGL, which isn't available in your browser.</p>
   <p>Try Chrome, Safari, or Firefox on a desktop or recent phone.</p>
 </div>
@@ -1763,12 +1933,13 @@
 
   <div id="question-bar"><div id="q-text">Loading…</div></div>
 
+  <!-- v15 Part B: kids need two numbers, not five. Flow surfaces as a gold
+       badge only once the multiplier kicks in (×2+). Streak/Best removed —
+       updateHUD no longer writes to them. -->
   <div id="stats">
     <div class="stat-row"><span class="stat-label">Lives</span> <span class="stat-value lives hi" id="lives">♥ 10</span></div>
     <div class="stat-row"><span class="stat-label">Score</span> <span class="stat-value" id="score">0</span></div>
-    <div class="stat-row"><span class="stat-label">Streak</span> <span class="stat-value" id="streak">0</span></div>
-    <div class="stat-row"><span class="stat-label">Flow</span> <span class="stat-value mult" id="mult">×1</span></div>
-    <div class="stat-row"><span class="stat-label">Best</span> <span class="stat-value" id="best">0</span></div>
+    <div id="flow-badge">FLOW ×2</div>
   </div>
 
   <div id="ingame-settings">
@@ -1780,10 +1951,9 @@
     <span class="key">ESC</span>: menu
   </div>
 
+  <!-- v15 Part B: in-flight column slimmed 6 → 3. Sound / auto-center / time
+       are set-and-forget — they moved into the pause card. -->
   <div id="icon-settings">
-    <button class="icon-btn" id="btn-sound"    title="Toggle sound">🔊</button>
-    <button class="icon-btn" id="btn-center"   title="Toggle auto-center">⊕</button>
-    <button class="icon-btn" id="btn-time"     title="Toggle day / sunset">☀</button>
     <button class="icon-btn" id="btn-speed"    title="Toggle Speed Mode (50% faster)">⚡</button>
     <button class="icon-btn" id="btn-controls" title="Switch controls">🕹</button>
     <button class="icon-btn" id="btn-pause"    title="Pause">⏸</button>
@@ -1859,97 +2029,104 @@
       </div>
     </div>
     <div class="topgun-subtitle">MATH FLIGHT · MARINA BAY</div>
-    <div class="credit-line">Made for my kids</div>
     <div class="best-pill" id="title-best">★ BEST: 0</div>
     <div class="title-unlock-hint" id="title-unlock-hint" style="display:none"></div>
 
     <!-- v14: Challenge banner — only visible when ?c=... URL param was decoded. -->
-    <div id="challenge-banner" style="display:none">
+    <div id="challenge-banner" class="card card--magenta" style="display:none">
       <div class="challenge-headline">🎯 CHALLENGE INCOMING</div>
       <div class="challenge-subtext">
         Same questions. Same order. Beat <b id="ch-score">0</b> on <b id="ch-level">—</b>.
       </div>
       <div class="challenge-buttons">
         <button class="diff-btn ch-accept" id="ch-accept">Take the challenge</button>
-        <button class="diff-btn ch-skip"   id="ch-skip">Skip · just play</button>
+        <button class="diff-btn btn-secondary ch-skip" id="ch-skip">Skip · just play</button>
       </div>
     </div>
 
+    <!-- v15 Part B: 2×2 gold level grid — the real CTA, above the fold. -->
     <div class="diff-row">
-      <button class="diff-btn tiny" onclick="startGame(1)">Tiny<small>1+1 → 5+5</small></button>
-      <button class="diff-btn"      onclick="startGame(2)">Easy<small>+</small></button>
-      <button class="diff-btn"      onclick="startGame(3)">Medium<small>+ −</small></button>
-      <button class="diff-btn"      onclick="startGame(4)">Hard<small>+ − ×</small></button>
+      <button class="diff-btn tiny" onclick="startGame(1)"><span class="lvl-glyph" aria-hidden="true">🐣</span>Tiny<small>1+1 → 5+5</small></button>
+      <button class="diff-btn"      onclick="startGame(2)"><span class="lvl-glyph" aria-hidden="true">✈️</span>Easy<small>+</small></button>
+      <button class="diff-btn"      onclick="startGame(3)"><span class="lvl-glyph" aria-hidden="true">🚀</span>Medium<small>+ −</small></button>
+      <button class="diff-btn"      onclick="startGame(4)"><span class="lvl-glyph" aria-hidden="true">🛩️</span>Hard<small>+ − ×</small></button>
     </div>
 
-    <div class="settings">
-      <div id="time-picker">
-        <span class="picker-label">Time:</span>
-        <label><input type="radio" name="timeofday" value="day"> ☀ Day</label>
-        <label class="sunset-opt"><input type="radio" name="timeofday" value="sunset"> 🌅 Sunset</label>
+    <!-- Quick toggles stay visible; full parental config lives behind ⚙. -->
+    <div class="quick-row">
+      <label class="seg-toggle"><input type="checkbox" id="cb-sound"><span>🔊 Sound</span></label>
+      <label class="seg-toggle"><input type="checkbox" id="cb-autocenter"><span>⊕ Auto-center</span></label>
+      <button id="btn-settings-toggle" aria-expanded="false" aria-controls="settings-panel">⚙ Settings</button>
+    </div>
+
+    <div class="settings" id="settings-panel" hidden>
+      <div id="time-picker" class="seg" role="radiogroup" aria-label="Time of day">
+        <span class="picker-label">Time</span>
+        <label><input type="radio" name="timeofday" value="day"><span>☀ Day</span></label>
+        <label class="sunset-opt"><input type="radio" name="timeofday" value="sunset"><span>🌅 Sunset</span></label>
       </div>
-      <label><input type="checkbox" id="cb-autocenter"> Auto-center</label>
-      <label><input type="checkbox" id="cb-sound"> Sound</label>
-      <div id="speed-picker">
-        <span class="picker-label">Speed:</span>
-        <label><input type="radio" name="speedmode" value="0"> Normal</label>
-        <label><input type="radio" name="speedmode" value="1"> ⚡ Fast</label>
-        <label><input type="radio" name="speedmode" value="2"> ⚡⚡ Faster</label>
+      <div id="speed-picker" class="seg" role="radiogroup" aria-label="Speed mode">
+        <span class="picker-label">Speed</span>
+        <label><input type="radio" name="speedmode" value="0"><span>Normal</span></label>
+        <label><input type="radio" name="speedmode" value="1"><span>⚡ Fast</span></label>
+        <label><input type="radio" name="speedmode" value="2"><span>⚡⚡ Faster</span></label>
       </div>
-      <div id="control-picker">
-        <span class="picker-label">Controls:</span>
-        <label><input type="radio" name="control" value="joystick"> 🕹 Joystick</label>
-        <label><input type="radio" name="control" value="dpad"> 🎮 D-pad</label>
+      <div id="control-picker" class="seg" role="radiogroup" aria-label="Touch controls">
+        <span class="picker-label">Controls</span>
+        <label><input type="radio" name="control" value="joystick"><span>🕹 Joystick</span></label>
+        <label><input type="radio" name="control" value="dpad"><span>🎮 D-pad</span></label>
       </div>
     </div>
 
-    <div class="hint">
-      <span class="desktop-only">
-        ARROW KEYS or WASD to steer · 5 streak = FLOW ×2 · 10 = ×3 · stay in flow!<br>
-        <b>C</b> auto-center · <b>M</b> sound · <b>T</b> time · <b>S</b> speed mode · <b>Z</b> ZOOOM · <b>ESC</b> pause
-      </span>
-      <span class="touch-only">
-        STEER with the joystick or D-pad · 5 streak = FLOW ×2 · 10 = ×3<br>
-        wrong answer or hit a building = -1 life · stay in flow for big scores
-      </span>
-    </div>
+    <!-- 3-pictogram one-liner — hidden for good once topsum_onboarded is set. -->
+    <div id="hint-strip">🎯 fly through the right answer&ensp;·&ensp;🕹️ steer with arrows or stick&ensp;·&ensp;⚡ streaks = boost</div>
+
+    <div class="credit-line">made for my kids</div>
   </div>
 
+  <!-- v15 Part B: restructured — Final Score is the hero, Fly Again is the
+       gold primary CTA, Menu drops to a cyan secondary. All ids unchanged. -->
   <div id="gameover">
     <h2>FLIGHT OVER</h2>
+    <div class="final-score"><span class="final-label">Final Score</span><b id="go-score">0</b></div>
     <div class="new-best" id="new-best">★ NEW BEST! ★</div>
     <!-- v14: head-to-head comparison — only visible when finishing a challenge flight. -->
-    <div id="vs-block" style="display:none">
+    <div id="vs-block" class="card card--magenta" style="display:none">
       <div class="vs-headline" id="vs-headline">🎯 CHALLENGE RESULT</div>
       <div class="vs-row"><span>You</span><b id="vs-you">0</b></div>
       <div class="vs-row"><span id="vs-them-label">Challenger</span><b id="vs-them">0</b></div>
       <div class="vs-verdict" id="vs-verdict">—</div>
     </div>
-    <div class="score-line">Final Score: <b id="go-score">0</b></div>
     <div class="score-line">Best Score: <b id="go-best">0</b></div>
     <div class="score-line">Best Streak: <b id="go-streak">0</b></div>
     <div class="score-line">Correct Answers: <b id="go-correct">0</b></div>
     <div class="go-buttons">
+      <button class="diff-btn" onclick="restartFlight()">Fly Again</button>
       <button class="diff-btn share-btn" onclick="shareScore()">Share Score</button>
       <!-- v14: Share Challenge — sends a friend the exact questions you just played. -->
       <button class="diff-btn ch-share-btn" onclick="shareChallenge()">🎯 Share Challenge</button>
-      <button class="diff-btn" onclick="restartFlight()">Fly Again</button>
-      <button class="diff-btn" onclick="goToMenu()">Menu</button>
+      <button class="diff-btn btn-secondary" onclick="goToMenu()">Menu</button>
     </div>
   </div>
 
   <div id="pause-overlay" role="dialog" aria-modal="true" aria-label="Paused">
-    <div class="pause-card">
+    <div class="pause-card card card--gold">
       <h3>PAUSED</h3>
+      <!-- v15 Part B: set-and-forget toggles live here now, off the HUD. -->
+      <div class="pause-toggles">
+        <button class="icon-btn" id="btn-sound"  title="Toggle sound">🔊</button>
+        <button class="icon-btn" id="btn-center" title="Toggle auto-center">⊕</button>
+        <button class="icon-btn" id="btn-time"   title="Toggle day / sunset">☀</button>
+      </div>
       <button class="diff-btn" id="pause-resume">Resume</button>
-      <button class="diff-btn" id="pause-restart">Restart</button>
+      <button class="diff-btn btn-secondary" id="pause-restart">Restart</button>
       <button class="diff-btn pause-end" id="pause-end">End Flight</button>
-      <button class="diff-btn" id="pause-menu">Back to Menu</button>
+      <button class="diff-btn btn-secondary" id="pause-menu">Back to Menu</button>
     </div>
   </div>
 
   <div id="onboard-overlay">
-    <div class="onboard-card">
+    <div class="onboard-card card card--gold">
       <div class="onboard-diagram">
         <div class="onboard-plane">✈️</div>
         <div class="onboard-ring"></div>
@@ -1960,13 +2137,13 @@
 
   <div id="unlock-celebration" role="dialog" aria-modal="true" aria-label="Unlock celebration">
     <div class="uc-rays" aria-hidden="true"></div>
-    <div class="unlock-card">
+    <div class="unlock-card card card--gold">
       <div class="uc-icon-wrap"><div id="uc-icon">🌅</div></div>
       <div id="uc-name">SUNSET MODE EARNED</div>
       <div id="uc-desc">Fly into the magic-hour sky.</div>
       <div class="uc-buttons">
         <button class="diff-btn" id="uc-try">Try it now</button>
-        <button class="diff-btn" id="uc-later">Maybe later</button>
+        <button class="diff-btn btn-secondary" id="uc-later">Maybe later</button>
       </div>
     </div>
   </div>
@@ -2242,6 +2419,22 @@
       }
     });
   });
+
+  // v15 Part B: ⚙ expands the full settings panel (collapsed by default).
+  // The 3-pictogram hint strip is hidden for good once the player onboards.
+  (function() {
+    const gear  = document.getElementById('btn-settings-toggle');
+    const panel = document.getElementById('settings-panel');
+    if (gear && panel) {
+      gear.addEventListener('click', () => {
+        const open = panel.hidden;
+        panel.hidden = !open;
+        gear.setAttribute('aria-expanded', String(open));
+      });
+    }
+    const strip = document.getElementById('hint-strip');
+    if (strip && onboarded) strip.hidden = true;
+  })();
 
   // === SOUND ===
   const Sound = {
@@ -5688,6 +5881,9 @@
       if (!onboarded) {
         onboarded = true;
         try { localStorage.setItem('topsum_onboarded', '1'); } catch(e){}
+        // v15 Part B: the title-screen pictogram strip is no longer needed.
+        const hs = document.getElementById('hint-strip');
+        if (hs) hs.hidden = true;
       }
       if (game.streak > 0 && game.streak % 5 === 0) {
         triggerWow();
@@ -5804,14 +6000,16 @@
     livesEl.textContent = `♥ ${game.lives}`;
     livesEl.classList.toggle('hi', game.lives >= 6);
     document.getElementById('score').textContent = game.score;
-    document.getElementById('streak').textContent = game.streak;
-    document.getElementById('best').textContent = game.bestScore;
-    const multEl = document.getElementById('mult');
-    multEl.textContent = `×${game.flowMult}`;
-    multEl.className = 'stat-value mult' +
-      (game.flowMult >= 4 ? ' tier4' :
-       game.flowMult >= 3 ? ' tier3' :
-       game.flowMult >= 2 ? ' tier2' : '');
+    // v15 Part B: Streak/Best rows left the HUD. Flow is a gold badge that
+    // only appears once the multiplier kicks in (×2+).
+    const flowEl = document.getElementById('flow-badge');
+    if (flowEl) {
+      flowEl.textContent = `FLOW ×${game.flowMult}`;
+      flowEl.className =
+        (game.flowMult >= 4 ? 'show tier4' :
+         game.flowMult >= 3 ? 'show tier3' :
+         game.flowMult >= 2 ? 'show' : '');
+    }
   }
 
   // v13: paint the ZOOOM bar to match current game state.
