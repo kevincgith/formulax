@@ -2895,38 +2895,47 @@
     addCollider(x, z, 14, 14, h + 2);
   }
 
-  // === FLIGHT PATH (v2) ===
+  // === FLIGHT PATH (v3) ===
   // Clockwise loop with three distinct cinematic moments:
   //   P1-P2:   skim east of the Singapore Flyer (~62m)
   //   P4-P5:   ★ BAY-SOUTH VISTA — low alt (Y=60) over mid-bay water,
   //            looking north at the full skyline (MBS, Supertrees, CBD)
+  //   P6-P6b:  banked U-turn sweep over open water, facing the full skyline —
+  //            apex P6b spreads the old 121° pinch over ~200m
   //   P7-P8:   ★ MBS CLOSE-PASS — diagonal SW→NE approach, climb from
   //            Y=95 to Y=118, skim OVER the east cantilever (the iconic
   //            boat overhang), 3/4 view of skypark
-  //   P9-P10:  ★ BAY-MID VIEW — descent past MBS over open bay water,
-  //            MBS receding south, CBD ahead
+  //   P9-P9b:  ★ BAY-MID VIEW — descent past MBS over open bay water,
+  //            turnaround apex P9b north of ArtScience, CBD ahead
   //   P11-P12: along east face of CBD towers (3m clearance — threads through)
   //   P14-P15: over Esplanade, then long wraparound over bay back to start
   //
-  // Safety verified for player drift xMax=28, yMax=16: all colliders clear.
+  // Safety verified for player drift xMax=28, yMax=16: drift-envelope collider
+  // sweep shows contacts only at the same three deliberately-reachable
+  // structures as before (Flyer, MBS skypark, CBD tower at -300,-60) — no new
+  // exposure. Apex points sit over open water (P6b nearest collider 300m+) /
+  // clear of ArtScience by 36m laterally (P9b).
+  // Max bend reduced 121° → 82°; lap 2471m → 2587m (+4.7%).
   // Steepest pitch ~18° at P7→P8 (dramatic MBS climb).
   const pathPoints = [
-    new THREE.Vector3(  60,  88,   100),  // P0  start, NW of Flyer
-    new THREE.Vector3( 230,  88,    40),  // P1  east, between Helix & Flyer
-    new THREE.Vector3( 320,  95,  -100),  // P2  CLOSE-PASS east of Flyer
-    new THREE.Vector3( 270,  85,  -240),  // P3  curving SE corner, descending
-    new THREE.Vector3( 270,  65,  -360),  // P4  SE corner of bay-south
-    new THREE.Vector3(  50,  60,  -360),  // P5  ★ BAY-SOUTH VISTA — low over mid-bay
-    new THREE.Vector3(-150,  70,  -280),  // P6  swinging back NW, climbing
-    new THREE.Vector3( -50,  95,  -240),  // P7  diagonal MBS approach (SW→NE)
-    new THREE.Vector3(  15, 118,  -215),  // P8  ★ MBS CLOSE-PASS over east cantilever
-    new THREE.Vector3(  60, 100,  -120),  // P9  past MBS, banking, ★ BAY-MID VIEW
-    new THREE.Vector3(-100,  95,  -100),  // P10 heading W toward CBD
-    new THREE.Vector3(-260, 102,  -120),  // P11 CLOSE-PASS east face of CBD
-    new THREE.Vector3(-265, 108,    20),  // P12 along CBD center
-    new THREE.Vector3(-240, 108,   150),  // P13 past CBD top
-    new THREE.Vector3(-170, 102,   245),  // P14 turning into bay
-    new THREE.Vector3( -20,  92,   285)   // P15 over Esplanade
+    new THREE.Vector3(  60,  88,  100),  // P0  start
+    new THREE.Vector3( 230,  88,   40),  // P1
+    new THREE.Vector3( 320,  95, -100),  // P2  Flyer close-pass
+    new THREE.Vector3( 270,  85, -240),  // P3
+    new THREE.Vector3( 270,  65, -360),  // P4
+    new THREE.Vector3(  50,  60, -360),  // P5  bay-south vista
+    new THREE.Vector3(-140,  66, -330),  // P6  U-turn outer (was -150,70,-280)
+    new THREE.Vector3(-175,  74, -255),  // P6b NEW U-turn apex — spreads the old 121° pinch over ~200m
+    new THREE.Vector3( -50,  95, -240),  // P7  MBS diagonal approach
+    new THREE.Vector3(  15, 118, -215),  // P8  MBS close-pass
+    new THREE.Vector3(  75, 100, -145),  // P9  bay-mid view (was 60,100,-120)
+    new THREE.Vector3(  10,  98,  -75),  // P9b NEW turnaround apex north of ArtScience
+    new THREE.Vector3(-100,  95, -100),  // P10
+    new THREE.Vector3(-260, 102, -120),  // P11 CBD face (3m thread preserved)
+    new THREE.Vector3(-265, 108,   20),  // P12
+    new THREE.Vector3(-240, 108,  150),  // P13
+    new THREE.Vector3(-170, 102,  245),  // P14
+    new THREE.Vector3(   0,  90,  272)   // P15 rounds the Esplanade→start turn (was -20,92,285)
   ];
   // Tension 0.5 = standard centripetal Catmull-Rom (smoother than the old 0.4).
   const path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
@@ -3568,9 +3577,26 @@
     zoomFireworkTimer: 0,    // countdown to next firework during ZOOOM
     // v14: Challenge mode
     flightSeed: 0,           // seed driving question RNG this flight (uint32)
-    activeChallenge: null    // { seed, level, score } if playing someone's challenge
+    activeChallenge: null,   // { seed, level, score } if playing someone's challenge
+    // Part E: pacing & cadence
+    breatherPending: false,  // next spawn uses the long scenic gap (set on 5-streak WOW)
+    cueFired: false          // approach chime already played for current question
   };
   const SPEEDS = { 1: 22, 2: 30, 3: 36, 4: 44 };
+  // Part E: question cadence tunables. Distances are meters of path arc;
+  // the spawner converts seconds → meters at the CURRENT speed, so the
+  // answer-to-answer rhythm holds at every speed tier (incl. Speed Mode).
+  const CADENCE = {
+    TARGET_GAP_SEC : 9.0,   // desired answer-to-answer time, all speeds
+    MIN_LOOK_M     : 140,   // never spawn closer than this
+    SIGHT_SEC      : 3.0,   // required seconds of clear LOS at current speed...
+    SIGHT_MIN_M    : 110,   // ...but at least this many meters
+    SIGHT_MAX_M    : 320,   // ...and capped (longest near-straight runs are ~320-400m)
+    LOS_CONE_DEG   : 22,    // gate counts as visible within this cone of travel direction
+    NUDGE_M        : 30,    // forward step when the sight check fails
+    MAX_NUDGES     : 14,
+    BREATHER_GAP_SEC : 16.0 // long scenic gap after every 5th-streak WOW
+  };
   const LEVEL_NAMES = { 1: 'Tiny', 2: 'Easy', 3: 'Medium', 4: 'Hard' };
   // v13: per-difficulty ZOOOM thresholds (correct answers needed to fill bar).
   const ZOOM_THRESHOLDS = { 1: 5, 2: 7, 3: 10, 4: 10 };
@@ -4250,6 +4276,8 @@
   function endZoom() {
     game.zoomActive = false;
     game.zoomCharge = 0;
+    // Part E3: ZOOOM itself was the breather — don't stack a scenic gap on it.
+    game.breatherPending = false;
     updateFlow();
     // Brief breath, then resume the math layer.
     game.answered = true;
@@ -4771,6 +4799,75 @@
   const gatePool = [buildGateShell(), buildGateShell(), buildGateShell()];
   gatePool.forEach(gp => scene.add(gp.group));
 
+  // Part E3: APPROACH BEACON
+  // One pooled additive sprite that hovers 45u above the center gate when the
+  // gates spawn far away (over a turn horizon), so "something is coming" reads
+  // before the gates themselves do. Re-tinted to the gate scheme on spawn.
+  // One sprite, one draw call, no lights.
+  const _beaconCanvas = document.createElement('canvas');
+  _beaconCanvas.width = 64; _beaconCanvas.height = 64;
+  {
+    const bctx = _beaconCanvas.getContext('2d');
+    const grad = bctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0,    'rgba(255,255,255,1)');
+    grad.addColorStop(0.25, 'rgba(255,255,255,0.75)');
+    grad.addColorStop(0.6,  'rgba(255,255,255,0.22)');
+    grad.addColorStop(1,    'rgba(255,255,255,0)');
+    bctx.fillStyle = grad;
+    bctx.fillRect(0, 0, 64, 64);
+  }
+  const beaconSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(_beaconCanvas),
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true
+  }));
+  beaconSprite.scale.set(18, 18, 1);
+  beaconSprite.visible = false;
+  scene.add(beaconSprite);
+
+  // Part E4: SKY STARS
+  // Pool of 8 reusable collectible sparkles laid along long scenic gaps —
+  // something to chase between questions. Shared 64×64 texture, additive,
+  // no lights. Positions derive from path geometry + star index only (NOT the
+  // seeded question RNG, so URL-challenge determinism is untouched).
+  const _starCanvas = document.createElement('canvas');
+  _starCanvas.width = 64; _starCanvas.height = 64;
+  {
+    const sctx = _starCanvas.getContext('2d');
+    const glow = sctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+    glow.addColorStop(0,    'rgba(255,255,255,0.9)');
+    glow.addColorStop(0.35, 'rgba(255,240,180,0.5)');
+    glow.addColorStop(1,    'rgba(255,220,120,0)');
+    sctx.fillStyle = glow;
+    sctx.fillRect(0, 0, 64, 64);
+    // crisp 5-point star core on top of the glow
+    sctx.fillStyle = 'rgba(255,255,255,0.95)';
+    sctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = (i % 2 === 0) ? 14 : 5.5;
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const px = 32 + Math.cos(a) * r, py = 32 + Math.sin(a) * r;
+      if (i === 0) sctx.moveTo(px, py); else sctx.lineTo(px, py);
+    }
+    sctx.closePath();
+    sctx.fill();
+  }
+  const _starTex = new THREE.CanvasTexture(_starCanvas);
+  const skyStars = [];
+  for (let i = 0; i < 8; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: _starTex, color: 0xffe9a0,
+      blending: THREE.AdditiveBlending, depthWrite: false, transparent: true
+    }));
+    s.scale.set(7, 7, 1);
+    s.visible = false;
+    s.userData = { starT: 0, pop: 0 };
+    scene.add(s);
+    skyStars.push(s);
+  }
+  function hideSkyStars() {
+    skyStars.forEach(s => { s.visible = false; s.userData.pop = 0; });
+  }
+
   function paintGateDigit(ctx, value) {
     ctx.clearRect(0, 0, 256, 256);
     ctx.fillStyle = 'rgba(40, 22, 0, 0.6)';
@@ -4799,31 +4896,45 @@
     gp.group.visible = true;
     return gp.group;
   }
-  function spawnGatesAhead() {
-    // Base lookahead: 0.09 of pathLength (~210m) — gives the player ~5s of
-    // clear sight-line into each gate at Hard speed, ~9s on Tiny. Tight
-    // enough that gates feel responsive (no dead time after answering),
-    // generous enough to read three options.
-    //
-    // BUT: if there's a bend between the player and the candidate gate
-    // position, the gate would pop into view only AFTER rounding the bend,
-    // which leaves no time to aim. To avoid that, we walk the gate forward
-    // in small steps until the path approaching the gate is straight enough
-    // for the player to lock on to it from a distance.
-    let gateT = (game.pathT + 0.09) % 1;
-    const SIGHT_BEFORE  = 0.045; // ~100m of straight approach before the gate
-    const STRAIGHT_DOT  = 0.95;  // tan dot product — 0.95 ≈ 18° max bend
-    const STEP          = 0.012; // ~26m per nudge forward
-    const MAX_NUDGES    = 12;    // up to ~315m of additional push
-    const tanAt = (t) => path.getTangentAt(((t % 1) + 1) % 1).normalize();
-    let nudges = 0;
-    while (nudges < MAX_NUDGES) {
-      const tanGate = tanAt(gateT);
-      const tanApproach = tanAt(gateT - SIGHT_BEFORE);
-      if (tanGate.dot(tanApproach) >= STRAIGHT_DOT) break; // straight enough
-      gateT = (gateT + STEP) % 1;
-      nudges++;
+  // Part E1: how many contiguous meters of clear line-of-sight a player
+  // approaching along the path has on the gate at gateT. Walks BACK from the
+  // gate in 20m steps; at each sample the direction TO the gate must sit
+  // inside a cone around the local travel direction (this catches S-bends
+  // that a two-tangent comparison would falsely pass).
+  const _LOS_COS = Math.cos(CADENCE.LOS_CONE_DEG * Math.PI / 180);
+  function losMeters(gateT, maxBack) {
+    const gatePos = path.getPointAt(((gateT % 1) + 1) % 1);
+    const STEP_M = 20;
+    let clear = 0;
+    for (let back = STEP_M; back <= maxBack; back += STEP_M) {
+      const t = ((gateT - back / pathLength) % 1 + 1) % 1;
+      const samplePos = path.getPointAt(t);
+      const tan = path.getTangentAt(t).normalize();
+      const toGate = gatePos.clone().sub(samplePos).normalize();
+      if (tan.dot(toGate) < _LOS_COS) break;
+      clear = back;
     }
+    return clear;
+  }
+  function spawnGatesAhead() {
+    // Part E1: time-based, sightline-aware spawn. Lookahead is seconds × the
+    // CURRENT speed (so Tiny and Faster get the same rhythm), and the gate is
+    // nudged forward until the approach has enough clear line-of-sight —
+    // keeping the best candidate if no nudge fully satisfies it.
+    const speed  = game.speed;
+    const gapSec = game.breatherPending ? CADENCE.BREATHER_GAP_SEC : CADENCE.TARGET_GAP_SEC;
+    game.breatherPending = false;
+    const lookM  = Math.max(CADENCE.MIN_LOOK_M, (gapSec - 0.9) * speed); // 0.9s answer cooldown already elapsed
+    const sightM = Math.min(Math.max(CADENCE.SIGHT_SEC * speed, CADENCE.SIGHT_MIN_M), CADENCE.SIGHT_MAX_M);
+    let gateT = (game.pathT + lookM / pathLength) % 1;
+    let best = { t: gateT, los: -1 };
+    for (let n = 0; n <= CADENCE.MAX_NUDGES; n++) {
+      const los = losMeters(gateT, sightM + 20);
+      if (los >= sightM) { best = { t: gateT, los }; break; }
+      if (los > best.los) best = { t: gateT, los };
+      gateT = (gateT + CADENCE.NUDGE_M / pathLength) % 1;
+    }
+    gateT = best.t;
     const frame = getPathFrame(gateT);
     const offsets = [-16, 0, 16];
     const gates = [];
@@ -4839,12 +4950,58 @@
     }
     game.question.gates = gates;
     game.question.gateT = gateT;
+    game.question.spawnInfo = {
+      losSec: best.los / speed,
+      distM: ((gateT - game.pathT + 1) % 1) * pathLength
+    };
+    game.cueFired = false;  // re-arm the 3s approach chime for this question
+    const distM = game.question.spawnInfo.distM;
+
+    // Part E3: far spawn → light the approach beacon above the center gate
+    // (it peeks over the turn horizon before the gates themselves do).
+    if (distM > 220) {
+      beaconSprite.material.color.setHex(timeAware.gateScheme.lightColor);
+      beaconSprite.position.copy(frame.pos);
+      beaconSprite.position.y += 45;
+      beaconSprite.scale.set(18, 18, 1);
+      beaconSprite.visible = true;
+    } else {
+      beaconSprite.visible = false;
+    }
+
+    // Part E4: long gap → lay sky stars along the path between player and
+    // gates (2.5s margin on each end), with a gentle weave that stays inside
+    // the drift envelope (±28 lateral / ±16 vertical).
+    hideSkyStars();
+    if (distM > 13 * speed && !game.zoomActive) {
+      const marginFrac = (2.5 * speed) / pathLength;
+      const spanFrac = distM / pathLength - 2 * marginFrac;
+      if (spanFrac > 0) {
+        const count = Math.min(8, Math.max(6, Math.round((spanFrac * pathLength) / 55)));
+        const startT = (game.pathT + marginFrac) % 1;
+        for (let k = 0; k < count; k++) {
+          const star = skyStars[k];
+          const st = (startT + spanFrac * (k + 0.5) / count) % 1;
+          const sf = getPathFrame(st);
+          star.position.copy(sf.pos)
+            .add(sf.right.clone().multiplyScalar(14 * Math.sin(k * 1.1)));
+          star.position.y += 6 * Math.sin(k * 0.7);
+          star.userData.starT = st;
+          star.userData.pop = 0;
+          star.scale.set(7, 7, 1);
+          star.visible = true;
+        }
+      }
+    }
+
     game.answered = false;
   }
   function clearGates() {
     // v13.2: hide pooled gates instead of removing them from the scene.
     // (Iterates the pool directly — game.question may be stale after a reset.)
     gatePool.forEach(gp => { gp.group.visible = false; });
+    beaconSprite.visible = false;  // Part E3
+    hideSkyStars();                // Part E4
   }
   function newQuestion() {
     clearGates();
@@ -4942,6 +5099,9 @@
       }
       if (game.streak > 0 && game.streak % 5 === 0) {
         triggerWow();
+        // Part E3: next spawn uses the long scenic gap — a deliberate
+        // breather after every 5-streak WOW moment.
+        game.breatherPending = true;
         // v11: streak finale firework over the bay (sunset only — fireworks check internally)
         if (Settings.timeOfDay === 'sunset') {
           launchFirework(FW_SITES[0], 2);
@@ -5095,6 +5255,9 @@
     game.zoomActive = false;
     game.zoomLapDone = false;
     game.zoomPending = false;
+    // Part E: reset pacing state
+    game.breatherPending = false;
+    game.cueFired = false;
     setPlaneTier(1);
     game.state = 'playing';
     document.getElementById('title').style.display = 'none';
@@ -5486,6 +5649,47 @@
       }
     }
 
+    // Part E4: sky-star collection — same pathT-crossing test as the gates.
+    // Catch within 9u awards +2 × flow; a miss just hides the star (no penalty).
+    if (!game.zoomActive) {
+      for (const star of skyStars) {
+        if (star.userData.pop > 0) {
+          // collected: quick scale-pop, then hide
+          star.userData.pop -= rawDt;
+          const ps = 7 + (0.3 - Math.max(0, star.userData.pop)) * 30;
+          star.scale.set(ps, ps, 1);
+          if (star.userData.pop <= 0) star.visible = false;
+          continue;
+        }
+        if (!star.visible) continue;
+        const st = star.userData.starT;
+        let reached = false;
+        if (game.pathT >= prevT) reached = st > prevT && st <= game.pathT;
+        else                     reached = st > prevT || st <= game.pathT;
+        if (!reached) continue;
+        if (shipPos.distanceTo(star.position) < 9) {
+          game.score += 2 * game.flowMult;
+          maybeUpdateBest();
+          updateHUD();
+          Sound.bonus();
+          star.userData.pop = 0.3;
+        } else {
+          star.visible = false;
+        }
+      }
+    }
+
+    // Part E3: audio pre-cue — soft two-note chime the first time the gates
+    // come within 3s of the plane (Sound.beep already respects the mute toggle).
+    if (game.question && !game.answered && !game.zoomActive && !game.cueFired) {
+      const remM = ((game.question.gateT - game.pathT + 1) % 1) * pathLength;
+      if (remM / game.speed < 3) {
+        game.cueFired = true;
+        Sound.beep(659.25, 0.10, 'sine', 0.09);
+        Sound.beep(880.00, 0.16, 'sine', 0.09, 0.12);
+      }
+    }
+
     if (game.state === 'playing' && game.answered && !game.zoomActive) {
       game.questionCooldown -= rawDt;
       if (game.questionCooldown <= 0) newQuestion();
@@ -5521,6 +5725,22 @@
           g.userData.ring.material.emissiveIntensity = 0.6 + Math.sin(t * 7) * 0.3;
         }
       });
+    }
+
+    // Part E3: approach-beacon pulse; retire it once the gates are close
+    // enough to read on their own (<150m remaining).
+    if (beaconSprite.visible) {
+      if (!game.question || game.answered) {
+        beaconSprite.visible = false;
+      } else {
+        const remM = ((game.question.gateT - game.pathT + 1) % 1) * pathLength;
+        if (remM < 150) {
+          beaconSprite.visible = false;
+        } else {
+          const bs = 18 + Math.sin(t * 2.5) * 3.5;
+          beaconSprite.scale.set(bs, bs, 1);
+        }
+      }
     }
 
     // v11: tiny mode directional arrow (level 1, first 2 questions)
