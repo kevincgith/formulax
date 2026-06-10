@@ -2918,6 +2918,10 @@
   addPath(-100, -90, 0, -70, 5);
   addPath(0, -70, 100, -50, 5);
   addPath(100, -50, 200, -80, 5);
+  // v15.1: Marina East shore promenade, from the Helix landing past NS Square
+  addPath(262, -16, 240, 42, 4);
+  addPath(240, 42, 214, 118, 4);
+  addPath(214, 118, 208, 142, 4);
   addPath(-180, 90, -150, 150, 4);
   addPath(-150, 150, -160, 240, 4);
 
@@ -2940,7 +2944,7 @@
   }
   const treeSpots = [
     [-50, -75, 1], [50, -60, 0.9], [150, -65, 1.1], [-150, -100, 0.9],
-    [-200, -150, 1], [200, -200, 1.1], [-150, -250, 0.9], [180, -300, 1],
+    [-238, -118, 1], [252, -180, 1.1], [-150, -250, 0.9], [180, -300, 1],
     [-50, -350, 1.1], [80, -350, 0.9],
     [-220, 100, 1], [-260, 50, 0.9], [-300, -50, 1.1], [-350, -100, 1],
     [-380, 50, 0.9], [-200, 200, 1], [-180, 280, 1.1],
@@ -3006,8 +3010,9 @@
     boats.push({ mesh, route: routePoints, segLengths, total, speed,
       progress: Math.random() * total });
   }
-  // All routes verified to stay in central bay water, away from land masses
-  // and the Helix Bridge collider (-60, 100, hx=28, hz=28).
+  // All routes verified to stay in central bay water, away from land masses.
+  // (v15.1: the Helix Bridge moved to the east channel at (230,-50), outside
+  // this zone, so the bay is collider-free for boats.)
   // Bay safe zone: roughly X=-110 to 170, Z=-30 to 200.
   addBoat(buildFerry(),   [[-100,40],[-110,140],[-30,180],[60,180],[140,130],[140,40],[60,5],[-30,5]], 8);
   addBoat(buildFerry(),   [[110,160],[40,200],[-40,205],[-90,165],[-30,115],[80,115]], 7);
@@ -3028,10 +3033,11 @@
       pts.map(p => new THREE.Vector3(p[0], p[1], p[2]))
     ).getSpacedPoints(TRAFFIC_SAMPLES - 1)); // n segments → n+1 = 200 points
   }
-  // 1) Helix Bridge crossing — bridge group sits at (-60,100) rotY π/2.4 with
-  //    a 90-long deck at y≈2.6; endpoints worked out along the rotated axis.
-  addTrafficRoute([[-44, 3.4, 42], [-48.4, 3.4, 56.5], [-60, 3.4, 100],
-                   [-71.6, 3.4, 143.5], [-76, 3.4, 158]]);
+  // 1) Helix Bridge crossing — bridge group sits at (230,-50) rotY -45° over
+  //    the east channel; waypoints run the deck axis with ~60-unit overruns
+  //    onto the Marina South / Marina East banks (both verified on land).
+  addTrafficRoute([[188, 3.4, -92], [198, 3.4, -82], [230, 3.4, -50],
+                   [262, 3.4, -18], [272, 3.4, -8]]);
   // 2) Marina South boulevard — a few units inland of the promenade path
   //    (addPath waypoints run (-100,-90) → (200,-80) along the south shore)
   addTrafficRoute([[-110, 1.0, -82], [0, 1.0, -62], [100, 1.0, -42], [210, 1.0, -72]]);
@@ -3105,13 +3111,16 @@
   // of promenade lights tracing the bay. One Points string, sampled every
   // ~6 units along a CatmullRom through the same shoreline waypoints the
   // walking paths (and traffic route 2) already follow — civic rim down the
-  // west side, then the Marina South promenade. Static geometry, zero ticks;
-  // applyTimeOfDay flips visibility (sunset or festive only). 1 draw call.
+  // west side, the Marina South promenade, then (v15.1) across the Helix
+  // deck and up the Marina East shore past NS Square. Static geometry, zero
+  // ticks; applyTimeOfDay flips visibility (sunset or festive only). 1 call.
   {
     const rim = [
       [-160, 240], [-150, 150], [-180, 90],   // civic promenade (addPath run)
       [-215, 5], [-200, -50],                 // hug the bay's west corner
-      [-100, -90], [0, -70], [100, -50], [200, -80]  // Marina South boulevard
+      [-100, -90], [0, -70], [100, -50], [200, -80],  // Marina South boulevard
+      [230, -50],                             // mid-bridge pin: lamps hug the Helix deck
+      [262, -16], [240, 42], [214, 118], [208, 142]   // Marina East shore run
     ].map(p => new THREE.Vector3(p[0], 3, p[1]));
     const rimCurve = new THREE.CatmullRomCurve3(rim);
     const lamps = rimCurve.getSpacedPoints(Math.round(rimCurve.getLength() / 6));
@@ -3289,9 +3298,9 @@
 
   // === D1: NS SQUARE (from the architectural render) ===
   // The new permanent NDP home: a white circular waterfront amphitheater
-  // jutting into the bay, crowned with the red "SG" spiral roof. Sits on the
-  // NE shore between the Esplanade and the Flyer, directly under the
-  // P15→P0 lap-start overpass (flight Y 88-92) — so the roof mark is built
+  // jutting into the bay, crowned with the red "SG" spiral roof. Anchored on
+  // the Marina East shore (v15.1) with the platform overhanging the water to
+  // the west, under the P0→P1 lap-start leg — so the roof mark is built
   // to read from above. ~8 meshes + 2 one-off canvases, all inside Part C's
   // draw-call savings. Mobile drops one seating arc.
   function buildNSSquare(x, z) {
@@ -3681,18 +3690,33 @@
   const colliders = [];
   function addCollider(cx, cz, hx, hz, topY) { colliders.push({ x: cx, z: cz, hx, hz, topY }); }
 
-  const merlion = buildMerlion(-180, 200);
-  scene.add(buildMBS(-30, -180));         addCollider(-30, -180, 42, 18, 120);
-  scene.add(buildSupertrees(140, -260));  addCollider(140, -260, 60, 65, 65);
-  scene.add(merlion);                     addCollider(-180, 200, 12, 12, 32);
+  // v15.1: Merlion at the civic water's edge (shore x≈-154.7 at z=192),
+  // rotated so the head/spout (local +z) face EAST into the bay. x=-165 keeps
+  // the garland curve 13.2 clear of the r-11 pedestal (it clips at -158).
+  const merlion = buildMerlion(-165, 192);
+  merlion.rotation.y = Math.PI / 2;
+  scene.add(buildMBS(60, -185));          addCollider(60, -185, 42, 18, 120);
+  const st = buildSupertrees(190, -250);
+  // 90° turn elongates the grove N-S (like the real Gardens) — keeps its east
+  // face 7.8 clear of the P3→P4 drift reach while staying 43 from MBS.
+  st.rotation.y = Math.PI / 2;
+  scene.add(st);                          addCollider(190, -255, 45, 64, 65);
+  scene.add(merlion);                     addCollider(-165, 192, 12, 12, 32);
   scene.add(buildEsplanade(70, 270));     addCollider(70, 270, 45, 30, 27);
-  // D1: NS Square on the NE shore — top of structure ~y 16, collider 22;
-  // the P15→P0 overpass runs Y 88-92 and player drift bottoms out at -16,
-  // so min flight altitude over it is ~72. No conflict, all spectacle.
-  scene.add(buildNSSquare(150, 180));     addCollider(150, 180, 32, 32, 22);
-  scene.add(buildArtScience(70, -100));   addCollider(70, -100, 24, 24, 32);
-  scene.add(buildHelixBridge(-60, 100, Math.PI / 2.4));
-                                          addCollider(-60, 100, 28, 28, 11);
+  // D1: NS Square anchored on the Marina East shore (edge x≈191 at z=175) —
+  // top of structure ~y 16, collider 22; the P0→P1 leg passes 77m west and
+  // player drift bottoms out at -16, so min altitude over it is ~72.
+  const ns = buildNSSquare(195, 175);
+  // Rotate so the grandstand canopy (local +z) faces EAST onto land and the
+  // circular platform juts WEST into the bay — the real Float anchoring.
+  ns.rotation.y = Math.PI / 2;
+  scene.add(ns);                          addCollider(195, 175, 32, 32, 22);
+  scene.add(buildArtScience(115, -72));   addCollider(115, -72, 24, 24, 32);
+  // v15.1: Helix spans the real east channel — deck (90 long, rotY -45°)
+  // lands on the Marina South tip (200,-80) and Marina East tip (260,-20),
+  // 84.85m apart, ~2.6 overhang per end. Collider = AABB of the rotated deck.
+  scene.add(buildHelixBridge(230, -50, -Math.PI / 4));
+                                          addCollider(230, -50, 34, 34, 11);
   const flyer = buildFlyer(310, 30);      // Part A: captured — update() spins the wheel
   scene.add(flyer);                       addCollider(310, 30, 38, 38, 82);
   scene.add(buildHDB(380, 220));          addCollider(380, 220, 30, 30, 48);
@@ -3764,7 +3788,7 @@
   // the MBS skypark corners and the Flyer apex added here. vertexColors so
   // festive mode can run the red/white alternation. One draw call.
   warnBeaconTips.push(
-    [-74, 116, -192], [20, 116, -168],  // MBS skypark corners (top ≈ 115)
+    [16, 116, -197], [110, 116, -173],  // MBS skypark corners (top ≈ 115)
     [310, 82.5, 30]                     // Flyer apex (hub 44 + radius 36)
   );
   {
@@ -3816,20 +3840,22 @@
   //   P6-P6b:  banked U-turn sweep over open water, facing the full skyline —
   //            apex P6b spreads the old 121° pinch over ~200m
   //   P7-P8:   ★ MBS CLOSE-PASS — diagonal SW→NE approach, climb from
-  //            Y=95 to Y=118, skim OVER the east cantilever (the iconic
-  //            boat overhang), 3/4 view of skypark
-  //   P9-P9b:  ★ BAY-MID VIEW — descent past MBS over open bay water,
-  //            turnaround apex P9b north of ArtScience, CBD ahead
+  //            Y=97 to Y=118, skim OVER the east cantilever (the iconic
+  //            boat overhang) of the relocated MBS (60,-185), 3/4 skypark view
+  //   P9-P9b:  ★ BAY-MID VIEW — descent east of the towers over open bay
+  //            water, turnaround apex P9b north of ArtScience, CBD ahead
   //   P11-P12: along east face of CBD towers (3m clearance — threads through)
   //   P14-P15: over Esplanade, then long wraparound over bay back to start
   //
-  // Safety verified for player drift xMax=28, yMax=16: drift-envelope collider
-  // sweep shows contacts only at the same three deliberately-reachable
-  // structures as before (Flyer, MBS skypark, CBD tower at -300,-60) — no new
-  // exposure. Apex points sit over open water (P6b nearest collider 300m+) /
-  // clear of ArtScience by 36m laterally (P9b).
-  // Max bend reduced 121° → 82°; lap 2471m → 2587m (+4.7%).
-  // Steepest pitch ~18° at P7→P8 (dramatic MBS climb).
+  // v15.1 geography remap: P7/P8 shifted by the MBS delta (+90,-5) so the
+  // skim is geometrically identical relative to the building; P9 moved east
+  // because the pure-delta exit leg re-crossed the moved MBS collider on the
+  // centerline. Safety re-verified for player drift xMax=28, yMax=16:
+  // drift-envelope collider sweep shows contacts only at the same three
+  // deliberately-reachable structures (Flyer, MBS skypark, CBD tower at
+  // -300,-60) — zero centerline contacts. Apexes stay over open water;
+  // ArtScience clearance at P9 is ~40m lateral.
+  // Lap 2587m → 2697m (+4.3%); max pitch ~24° at P7→P8 (matches v15).
   const pathPoints = [
     new THREE.Vector3(  60,  88,  100),  // P0  start
     new THREE.Vector3( 230,  88,   40),  // P1
@@ -3839,9 +3865,9 @@
     new THREE.Vector3(  50,  60, -360),  // P5  bay-south vista
     new THREE.Vector3(-140,  66, -330),  // P6  U-turn outer (was -150,70,-280)
     new THREE.Vector3(-175,  74, -255),  // P6b NEW U-turn apex — spreads the old 121° pinch over ~200m
-    new THREE.Vector3( -50,  95, -240),  // P7  MBS diagonal approach
-    new THREE.Vector3(  15, 118, -215),  // P8  MBS close-pass
-    new THREE.Vector3(  75, 100, -145),  // P9  bay-mid view (was 60,100,-120)
+    new THREE.Vector3(  40,  97, -245),  // P7  MBS diagonal approach (+2y holds max pitch)
+    new THREE.Vector3( 105, 118, -220),  // P8  MBS close-pass (exact MBS delta from v15)
+    new THREE.Vector3( 125, 106, -158),  // P9  bay-mid view, east of the moved towers
     new THREE.Vector3(  10,  98,  -75),  // P9b NEW turnaround apex north of ArtScience
     new THREE.Vector3(-100,  95, -100),  // P10
     new THREE.Vector3(-260, 102, -120),  // P11 CBD face (3m thread preserved)
@@ -5324,7 +5350,7 @@
   ];
   const FW_SITES = [
     { x: 0,   z: 0    },
-    { x: -30, z: -180 },
+    { x: 60,  z: -185 },
     { x: 70,  z: 270  }
   ];
   // Part A: NDP red/white — picked ~70% of the time when festive. Orthogonal
@@ -5335,7 +5361,7 @@
   // points along the promenade garland. Pure site-selection swap; the pool
   // itself is untouched.
   const FW_SITES_FESTIVE = [
-    { x: 150,  z: 180 },   // NS Square — the anchor
+    { x: 195,  z: 175 },   // NS Square — the anchor
     { x: 200,  z: -80 },   // promenade rim, south-east
     { x: 0,    z: -70 },   // promenade rim, mid-south
     { x: -180, z: 90  },   // civic rim, west
