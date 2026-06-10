@@ -132,11 +132,24 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 
 ### 🌆 Cinematic Marina Bay World
 - Stylised Singapore skyline (Merlion, bay, boats, water)
-- Day and Sunset modes
+- **NS Square landmark** on the NE shore — the fireworks anchor site
+- **Lit window facades** across the whole skyline (shared materials, so it's cheap)
+- Rooftop props and blinking **aircraft-warning beacons** on the tall towers
+- **Ambient traffic** — dark specks by day, glowing light streams at dusk
+- A **shoreline light garland** along the promenade at dusk and on festive days
+- A **rotating Singapore Flyer** (~100 s per revolution, capsules stay level)
+- Day and Sunset modes, with fog depth tuned per time-of-day
 - Fireworks during sunset
 - A Chinook with a Singapore flag orbits at altitude during the day
 - Occasional NDP-style RSAF fighter formation flypast with contrails
 - Dynamic lighting and atmosphere
+
+### 🇸🇬 Singapore Flavor
+Top Sum is set over Marina Bay, and v15 leans in:
+
+- **🇸🇬 Singlish cheers** — streak milestones cheer in Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*). On by default; toggle from the title screen.
+- **🎆 National Day mode** — auto-activates every **Aug 9**, or pin it on year-round from the title-screen toggle. Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, and a short festive fanfare. Want it today? Add `?ndp=1` to the URL (session-only, doesn't change your saved setting).
+- **Streak-10 RSAF salute** — hold a 10-streak and a low formation pass roars over the bay in your honour.
 
 ### 🎮 Built for Desktop + Mobile
 - Keyboard controls (arrows / WASD)
@@ -189,10 +202,14 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 
 - Pure HTML / CSS / JavaScript
 - WebGL via [Three.js](https://threejs.org)
-- Fully client-side — no backend, no analytics, no tracking
+- Fully client-side — no backend, no accounts, no tracking of any kind by default
 - Single-file architecture (`index.html`)
 
 Requires a modern browser with WebGL — Chrome, Safari, Firefox, or Edge on desktop or recent mobile.
+
+### 📊 Analytics (optional, off by default)
+
+The repo includes an optional, privacy-first analytics setup in [`analytics/`](analytics/README.md) — a tiny Cloudflare Worker that counts anonymous events for the share/challenge funnel. No IP addresses, no user agents, no cookies, no identifiers; scores are stored as coarse buckets only. It is **completely disabled** until you deploy the Worker and paste its URL into `index.html` — out of the box, the game makes zero network calls. See [`analytics/README.md`](analytics/README.md) for setup.
 
 ---
 

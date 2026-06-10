@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v15] — 2026-06-10
+
+**Singapore Flavor Pack + a Cities: Skylines world pass.** Singlish cheers, a full National Day mode, an NS Square landmark, a skyline rebuilt on shared lit-facade materials, a Gold Cockpit UI refresh, pacing v3, and privacy-first analytics that ship switched off.
+
+### Added
+- **Singlish streak cheers** — the streak headline ladder now speaks Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*) with `FLOW ×N · PERFECT RUN` in the sub-line. 🇸🇬 title-screen toggle, default on, persists (`topsum_singlish`).
+- **National Day mode** — auto-activates every Aug 9, pinnable via the 🎆 settings pill (persists, `topsum_festive`), or forceable any day with `?ndp=1` (session-only, never written to storage). Red/white UI accent takeover, red/white facade lights and beacons, day-round fireworks, festive flypast cadence.
+- **Streak-10 RSAF salute** — hit streak 10 (and 20, 30…) and a low formation pass roars over within seconds, in day and sunset. Ambient flypast scheduling resumes afterwards.
+- **Rotating Singapore Flyer** — the wheel actually turns now (~100 s/revolution), capsules stay level, legs and base static.
+- **Festive fanfare** — an original ascending sting (deliberately *not* the anthem), once per session on first flight start.
+- **NS Square landmark** on the NE shore between the Esplanade and the Flyer — the new fireworks anchor site.
+- **Shoreline light garland** — a glowing promenade rim at dusk and on festive days.
+- **Festive Chinook escorts** — two escort helis flank the flag Chinook on National Day, sharing the parent's materials.
+- **Lit window facades + rooftop props + aircraft-warning beacons + ambient traffic** — the Cities: Skylines world pass. Windows glow from shared canvas-texture sheets, roofs get a prop kit and setback crowns, tall towers blink, and 200-sample car streams read as dark specks by day and light rivers at dusk.
+- **Sky Star pickups + gate approach beacon/chime** — something to chase during breathers, and a clear audio-visual cue when the next gate cluster is coming.
+- **Privacy-first Cloudflare analytics** for the share/challenge funnel (`analytics/` Worker + D1, plus a commented-out Web Analytics tag). Fire-and-forget `sendBeacon` at menu/end-of-flight moments only; no IP, no user-agent, no identifiers, score bucketed to the nearest 50. **Ships switched off** — every call no-ops until `ANALYTICS_URL` is configured. See [`analytics/README.md`](analytics/README.md).
+- **Gold Cockpit UI refresh** — design tokens, segmented pill controls (no native radios/checkboxes), above-the-fold title screen on 360×800, trimmed HUD (Lives + Score, Flow badge from streak 3+), card-style modals.
+
+### Changed
+- **Gate spawning is now time-based and sightline-aware**, and the flight path was reshaped into 18 points with widened turnarounds — a consistent ~9–12 s answer cadence at all speed tiers, with deliberate breathers.
+- **Formation flypasts**: festive cadence tightened (~14–24 s) with a sunset allowance, alternating red/white festive trails, and a red/white fireworks palette bias on National Day.
+- **Title screen redesigned** around the new token system.
+- **Fog depth tuned per time-of-day** — clear tropical day vs hazy amber sunset.
+- **Skyline rebuilt on shared materials** — a handful of shared facade sheets instead of per-building materials; large draw-call reduction.
+
+### Fixed
+- **Day-mode ZOOOM fireworks** were force-launched by `update()` and then reset to idle by `tickFireworks()` on the very next frame, so they never rendered. An active ZOOOM now keeps its bursts alive in plain day mode.
+
+### Conscious decision: reduced motion
+In-world WebGL ambient motion (the rotating Flyer, flypasts, fireworks) is **not** suppressed under `prefers-reduced-motion` — consistent with the ambient world motion (water, boats, Chinook) the game has never suppressed. UI-layer animation continues to respect the preference; the Singlish cheers ride the existing `#feedback` opacity transition with no new keyframes.
+
+---
+
 ## [v14] — 2026-05-10
 
 **URL Challenge** — async multiplayer without a backend. Share a link, a friend plays the exact same questions, head-to-head at the end. Zero accounts, zero servers, zero data leaves either device.

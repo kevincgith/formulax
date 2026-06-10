@@ -1,8 +1,86 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v14)
+  TOP SUM · Math Flight (v15)
   ------------------------------------------------------------
+  v15 changes:
+    SINGAPORE FLAVOR PACK:
+    · Singlish streak cheers — the streak headline ladder now
+      speaks Singlish ("SHIOK!", "STEADY LAH!", "POWER LAH!",
+      "WAH, SO ZAI!", "HUAT AH!") with the FLOW ×N · PERFECT RUN
+      detail tucked into the sub-line. 🇸🇬 toggle on the title
+      screen, default ON, persists to topsum_singlish.
+    · National Day mode — auto-activates every Aug 9 (date
+      cached at boot, festiveActive() runs in per-frame ticks),
+      forceable any day via ?ndp=1 (session-only, never written
+      to storage) or pinnable via the 🎆 settings pill. Red/white
+      takeover: UI accent tokens, facade light sheets, beacon
+      colors, day-round fireworks with a red/white palette bias,
+      flypasts trailing alternating red/white smoke at a tighter
+      ~14–24s cadence (sunset allowed too).
+    · Streak-10 RSAF salute — hit streak 10 (and 20, 30…) and a
+      low formation pass roars over within seconds, day and
+      sunset. Ambient flypast scheduling resumes afterwards.
+    · Rotating Singapore Flyer at (310, 30) — wheel actually
+      turns now (~100s/revolution), capsules stay level, legs
+      and base static. Title orbit camera shows it off.
+    · Festive fanfare — an ORIGINAL ascending sting (G4-C5-E5-G5,
+      deliberately not the anthem: rights are held by the SG
+      government), once per session on first flight start.
+
+    WORLD — NS SQUARE + FESTIVE SET DRESSING:
+    · NS Square landmark on the NE shore between the Esplanade
+      and the Flyer — the new fireworks anchor site.
+    · Shoreline light garland — a glowing promenade rim that
+      lights up at dusk and on festive days.
+    · Festive Chinook escorts — the flag Chinook never flies
+      alone on National Day; two escort helis flank it, sharing
+      the parent's materials (zero new material cost).
+    · Sunset palette tuned to sit with the red/white festive kit.
+
+    WORLD — CITIES: SKYLINES PASS:
+    · Lit window facades on SHARED canvas-texture materials —
+      the whole skyline rebuilt onto a handful of shared sheets.
+      Big draw-call cut versus per-building materials.
+    · Setback crowns + rooftop prop kit (AC units, tanks went
+      modular) so roofs read as real from flight altitude.
+    · Aircraft-warning beacons blinking on the tall towers.
+    · Ambient traffic — 200-sample routed car streams: dark
+      specks by day, additive light rivers at dusk.
+    · Fog depth now tuned per time-of-day (clear tropical day vs
+      hazy amber sunset).
+
+    GOLD COCKPIT UI REFRESH:
+    · Design tokens (--gold family + festive red/white override),
+      segmented pill controls replacing native radios/checkboxes,
+      title screen fits above the fold on 360×800, HUD trimmed to
+      Lives + Score (Flow badge appears at streak 3+), pause /
+      crash / unlock modals share one .card look.
+
+    FLIGHT-PATH PACING v3:
+    · 18-point flight path with widened turnarounds; gate spawns
+      are now time-based AND sightline-aware, targeting a steady
+      ~9–12s answer cadence at every speed tier.
+    · Breathers between question bursts, an approach beacon +
+      chime cueing the next gate cluster, and Sky Star pickups
+      to chase during the gaps.
+
+    PRIVACY-FIRST ANALYTICS (OFF BY DEFAULT):
+    · Cloudflare Worker + D1 event counter for the share/
+      challenge funnel lives in analytics/. The game fires
+      fire-and-forget sendBeacon() calls at menu / end-of-flight
+      moments only — never per-frame, never blocking, silent
+      no-op until ANALYTICS_URL is pasted in. No IP, no UA, no
+      cookies, no identifiers; score is bucketed to nearest 50.
+      Plus a commented-out Cloudflare Web Analytics tag before
+      </body> awaiting its dashboard token. See analytics/README.
+
+    BUGFIX:
+    · Day-mode ZOOOM fireworks: update() force-launched them but
+      tickFireworks() reset them to idle on the very next frame,
+      so they never rendered. An active ZOOOM now keeps its
+      bursts alive in plain day mode.
+
   v14 changes:
     URL CHALLENGE — ASYNC MULTIPLAYER WITHOUT A BACKEND:
     · Each flight now runs on a uint32 seed. Question generation
@@ -2190,6 +2268,14 @@
   if (isTouch) document.body.classList.add('is-touch');
   const isMobilePerf = isTouch && Math.min(innerWidth, innerHeight) < 900;
 
+  // Part F (v15): analytics endpoint. Empty string = analytics fully OFF
+  // (the shipped default) — every track() call becomes a silent no-op, so
+  // offline / file:// / ad-blocked play is completely untouched. To enable:
+  // deploy the Worker in analytics/ (see analytics/README.md) and paste the
+  // printed URL + '/e' here, e.g.
+  // 'https://top-sum-analytics.<your-subdomain>.workers.dev/e'.
+  const ANALYTICS_URL = '';
+
   const keys = {};
   const joy = { x: 0, y: 0 };
 
@@ -2571,6 +2657,21 @@
       this.beep(783.99, 0.50, 'sine', 0.20, 0.48);
     }
   };
+
+  // === Part F (v15): ANALYTICS BEACON ===
+  // Fire-and-forget event counter for the share/challenge funnel (Cloudflare
+  // Worker in analytics/). Every call site sits at a menu / end-of-flight /
+  // one-shot moment — never in a per-frame path. sendBeacon never blocks the
+  // main thread, survives page unload, and we swallow every possible error:
+  // gameplay must not be able to tell whether analytics exists.
+  // Payload matches the Worker allowlist exactly: {e, l?, s?, c?}.
+  function track(name, props) {
+    if (!ANALYTICS_URL || !navigator.sendBeacon) return;
+    try {
+      const body = Object.assign({ e: name }, props || {});
+      navigator.sendBeacon(ANALYTICS_URL, JSON.stringify(body));
+    } catch (e) { /* never let telemetry break the game */ }
+  }
 
   // === SCENE ===
   const scene = new THREE.Scene();
@@ -4483,6 +4584,9 @@
     const c = params.get('c');
     if (c) incomingChallenge = decodeChallenge(c);
   } catch (e) {}
+  // Part F: count successfully-decoded challenge-link opens (top of funnel,
+  // fires once at load — before the player accepts or skips).
+  if (incomingChallenge) track('challenge_open', { l: incomingChallenge.level });
 
   // === v11: TITLE-SCREEN UNLOCK HINT ===
   function renderUnlockHint() {
@@ -4516,10 +4620,12 @@
   document.getElementById('ch-accept').addEventListener('click', () => {
     if (!incomingChallenge) return;
     Sound.click();
+    track('challenge_accept', { l: incomingChallenge.level });
     startGame(incomingChallenge.level, true);
   });
   document.getElementById('ch-skip').addEventListener('click', () => {
     Sound.click();
+    track('challenge_skip');
     incomingChallenge = null;
     document.getElementById('challenge-banner').style.display = 'none';
     // Strip the URL so reloading or "Back to menu" doesn't re-surface it.
@@ -5160,6 +5266,7 @@
     }
     game.zoomPending = false;
     game.zoomActive = true;
+    track('zoom_fired');   // Part F: one-shot at activation, never per-frame
     game.zoomStartPathT = game.pathT;
     game.zoomLapDone = false;
     game.zoomFireworkTimer = 0;     // fire one immediately on activation
@@ -6252,6 +6359,7 @@
     game.cueFired = false;
     setPlaneTier(1);
     game.state = 'playing';
+    track('game_start', { l: level });   // Part F: once per flight
     document.getElementById('title').style.display = 'none';
     document.getElementById('gameover').classList.remove('show');
     document.getElementById('slowmo-overlay').classList.remove('show');
@@ -6285,6 +6393,14 @@
     game.question = null;
     totalFlights++;
     try { localStorage.setItem('topsum_total_flights', String(totalFlights)); } catch(e){}
+    // Part F: once per flight end. Score is pre-rounded to the nearest 50 —
+    // the Worker stores a coarse bucket, never the exact score. Flag = this
+    // flight was a challenge (the Worker's documented `c` semantics).
+    track('game_over', {
+      l: game.level,
+      s: Math.round(game.score / 50) * 50,
+      c: game.activeChallenge ? 1 : 0
+    });
     document.getElementById('go-score').textContent = game.score;
     document.getElementById('go-best').textContent = game.bestScore;
     document.getElementById('go-streak').textContent = game.bestStreak;
@@ -6339,6 +6455,7 @@
   // === SHARE SCORE ===
   function shareScore() {
     Sound.click();
+    track('share_score');   // Part F: button tap, one-shot
     // Always share the canonical play URL — never a local file:// path or query-string variant.
     const url = 'https://mli3w.github.io/top-sum/';
     // Short text for the native share sheet (which appends the url itself)
@@ -6371,6 +6488,7 @@
       return;
     }
     const code = encodeChallenge(game.flightSeed, game.level, game.score);
+    track('challenge_share', { l: game.level });   // Part F: funnel start
     const url = 'https://mli3w.github.io/top-sum/?c=' + code;
     const levelName = LEVEL_NAMES[game.level] || '';
     const shortText = `🎯 I scored ${game.score} on Top Sum ${levelName} mode — same questions, can you beat me?`;
@@ -6788,5 +6906,11 @@
   }
 })();
 </script>
+<!-- Part F (v15): Cloudflare Web Analytics (traffic / referrers / devices).
+     To enable: register mli3w.github.io as a Web Analytics site in the
+     Cloudflare dashboard, paste the snippet token over PASTE_TOKEN_HERE,
+     then uncomment the tag below (details in analytics/README.md).
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"PASTE_TOKEN_HERE"}'></script>
+-->
 </body>
 </html>
