@@ -359,13 +359,22 @@
     --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   /* Part A seam: National Day mode re-skins the gold family to red/white by
-     overriding tokens only. Inert until Part A adds body.festive. */
+     overriding tokens only. applyFestive() toggles body.festive. */
   body.festive {
     --gold:        var(--sg-red);
     --gold-bright: #ffffff;
     --gold-deep:   #a81322;
     --gold-line:   rgba(238, 37, 54, 0.65);
     --gold-tint:   rgba(238, 37, 54, 0.12);
+  }
+  /* Part A: the logo star's gradient is hardcoded gold (not token-driven),
+     so it gets its own red/white festive coat. Everything else rides the
+     token override above. */
+  body.festive .topgun-logo .logo-star {
+    background: linear-gradient(180deg,
+      #ffffff 0%, #ff96a0 35%, var(--sg-red) 75%, #7a0e1a 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-stroke: 0.6px rgba(90, 0, 12, 0.5);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -703,6 +712,9 @@
     font-size: 13px;
     opacity: 0; transition: opacity 0.25s;
     white-space: nowrap;
+    /* Part A: toasts fired from the title screen (speed mode, sunset lock,
+       festive toggle, Aug-9 greeting) must paint above #title (z 10). */
+    z-index: 20;
   }
   #toast.show { opacity: 1; }
 
@@ -2076,6 +2088,9 @@
         <label><input type="radio" name="control" value="joystick"><span>🕹 Joystick</span></label>
         <label><input type="radio" name="control" value="dpad"><span>🎮 D-pad</span></label>
       </div>
+      <!-- v15 Part A: Singapore flavor toggles -->
+      <label class="seg-toggle"><input type="checkbox" id="cb-singlish"><span>🇸🇬 Singlish cheers</span></label>
+      <label class="seg-toggle"><input type="checkbox" id="cb-festive"><span>🎆 National Day mode</span></label>
     </div>
 
     <!-- 3-pictogram one-liner — hidden for good once topsum_onboarded is set. -->
@@ -2196,10 +2211,40 @@
   const SPEED_MODE_LABELS = ['OFF', 'FAST', 'FASTER'];
   const SPEED_MODE_ICONS  = ['⚡', '⚡', '⚡⚡'];
 
-  // Part C7: festive seam. A future National Day mode overrides this function
-  // and re-calls window._applyTimeOfDay() — the world (warning beacons go
-  // red/white, facade windows grow festive cells) reacts on its own.
-  window.festiveActive = window.festiveActive || (() => false);
+  // Part A (v15): National Day mode — the real implementation of the Part C7
+  // festive seam. Priority: ?ndp=1 force-param (session-only, never written
+  // to storage) → explicit checkbox choice (topsum_festive '1'/'0') → auto
+  // on Aug 9. The URL read and date check happen HERE, before the world
+  // builds, because facade generation and beacon setup consume
+  // window.festiveActive() during construction — the old param block (the
+  // ?c= challenge read) runs far too late for them. Date is cached at boot:
+  // festiveActive() runs inside per-frame ticks.
+  let forceFestive = false;
+  try {
+    forceFestive = new URLSearchParams(location.search).get('ndp') === '1';
+  } catch (e) {}
+  const bootIsAug9 = (() => {
+    const d = new Date();
+    return d.getMonth() === 7 && d.getDate() === 9;   // months are 0-based
+  })();
+  let festiveFanfarePlayed = false;   // Sound.festive() fires once per session
+  function festiveActive() {
+    if (forceFestive) return true;
+    if (Settings.festive !== null) return Settings.festive;
+    return bootIsAug9;
+  }
+  window.festiveActive = festiveActive;   // supersedes the Part C7 stub
+  // Flip the UI accent tokens (body.festive, Part B token override) and make
+  // the world re-evaluate: _applyTimeOfDay's _lastFestive flip repaints the
+  // facade sheets + beacon colors, shows/hides the garland; the fireworks /
+  // formation / Chinook-escort gates read festiveActive() live every tick.
+  function applyFestive() {
+    const fest = festiveActive();
+    document.body.classList.toggle('festive', fest);
+    const cb = document.getElementById('cb-festive');
+    if (cb) cb.checked = fest;   // checkbox reflects EFFECTIVE state (Aug-9 auto included)
+    if (window._applyTimeOfDay) window._applyTimeOfDay();
+  }
 
   const Settings = {
     autoCenter: true,
@@ -2207,6 +2252,8 @@
     control: isTouch ? 'dpad' : 'joystick',
     timeOfDay: 'day',
     speedMode: 0,   // v13.1: 0 = Off, 1 = Fast (1.5×), 2 = Faster (1.85×)
+    singlish: true, // Part A: Singlish streak cheers, default ON
+    festive: null,  // Part A: tri-state — true/false explicit, null = auto-by-Aug-9
     load() {
       let savedControl = null;
       try {
@@ -2226,6 +2273,13 @@
           const n = parseInt(sp, 10);
           this.speedMode = (n === 1 || n === 2) ? n : 0;
         }
+        // Part A (v15): Singlish cheers + National Day tri-state. An absent
+        // topsum_festive key means "auto" (festiveActive falls back to Aug 9).
+        const sg = localStorage.getItem('topsum_singlish');
+        const fv = localStorage.getItem('topsum_festive');
+        if (sg !== null) this.singlish = sg === '1';
+        if (fv === '1') this.festive = true;
+        else if (fv === '0') this.festive = false;
         // One-time migration: any older default of 'joystick' on a touch
         // device gets switched over to 'dpad' the first time we boot up
         // with this build. After this runs once, the user's explicit choice
@@ -2241,12 +2295,17 @@
       if (!savedControl && isTouch) this.control = 'dpad';
       document.getElementById('cb-autocenter').checked = this.autoCenter;
       document.getElementById('cb-sound').checked = this.sound;
+      document.getElementById('cb-singlish').checked = this.singlish;
+      // #cb-festive is synced inside applyFestive() — it shows the EFFECTIVE
+      // state (force param / explicit choice / Aug-9 auto), not the raw key.
       document.querySelectorAll('input[name=control]').forEach(r => r.checked = (r.value === this.control));
       document.querySelectorAll('input[name=timeofday]').forEach(r => r.checked = (r.value === this.timeOfDay));
       document.querySelectorAll('input[name=speedmode]').forEach(r => r.checked = (parseInt(r.value, 10) === this.speedMode));
       this.updateBadges();
       this.applyControl();
-      applyTimeOfDay();
+      // Part A: applyFestive toggles body.festive, syncs the checkbox, then
+      // runs applyTimeOfDay itself — one call covers both concerns.
+      applyFestive();
     },
     save() {
       // v13.2: capture current values now, write during next idle slot.
@@ -2255,7 +2314,12 @@
         sound:      this.sound ? '1' : '0',
         control:    this.control,
         time:       this.timeOfDay,
-        speedmode:  String(this.speedMode | 0)
+        speedmode:  String(this.speedMode | 0),
+        singlish:   this.singlish ? '1' : '0',
+        // Part A: null = auto mode — keep the key absent so Aug 9 keeps
+        // working in future years. ?ndp=1 never touches this (forceFestive
+        // is session state, not a Settings field).
+        festive:    this.festive === null ? null : (this.festive ? '1' : '0')
       };
       persistAsync(() => {
         try {
@@ -2264,6 +2328,9 @@
           localStorage.setItem('topsum_control',    snapshot.control);
           localStorage.setItem('topsum_time',       snapshot.time);
           localStorage.setItem('topsum_speedmode',  snapshot.speedmode);
+          localStorage.setItem('topsum_singlish',   snapshot.singlish);
+          if (snapshot.festive === null) localStorage.removeItem('topsum_festive');
+          else localStorage.setItem('topsum_festive', snapshot.festive);
         } catch (e) {}
       });
     },
@@ -2379,6 +2446,16 @@
   document.getElementById('cb-sound').addEventListener('change', e => {
     Settings.sound = e.target.checked; Settings.save(); Settings.updateBadges();
   });
+  // v15 Part A: Singapore flavor toggles (same pattern as cb-autocenter).
+  document.getElementById('cb-singlish').addEventListener('change', e => {
+    Settings.singlish = e.target.checked; Settings.save();
+  });
+  document.getElementById('cb-festive').addEventListener('change', e => {
+    Settings.festive = e.target.checked;   // explicit choice overrides Aug-9 auto
+    Settings.save();
+    applyFestive();   // body.festive + _applyTimeOfDay → facades/beacons/garland react
+    showToast(festiveActive() ? '🎆 NATIONAL DAY MODE ON' : 'NATIONAL DAY MODE OFF');
+  });
   // v13.1: speedmode is now a 3-state radio group (Off / Fast / Faster).
   document.querySelectorAll('input[name=speedmode]').forEach(r => {
     r.addEventListener('change', e => {
@@ -2483,7 +2560,16 @@
       this.beep(1318.5, 0.55, 'sine', 0.18, 0.55);
       this.beep(783.99, 0.55, 'sine', 0.10, 0.55);
     },
-    click()  { this.beep(440,0.05,'sine',0.1); }
+    click()  { this.beep(440,0.05,'sine',0.1); },
+    festive() {
+      // Part A: National Day fanfare — an ORIGINAL ascending sting
+      // (G4–C5–E5–G5). Deliberately not a quote of any real melody:
+      // "Majulah Singapura" rights are held by the SG government.
+      this.beep(392.00, 0.16, 'sine', 0.16);
+      this.beep(523.25, 0.16, 'sine', 0.17, 0.16);
+      this.beep(659.25, 0.16, 'sine', 0.18, 0.32);
+      this.beep(783.99, 0.50, 'sine', 0.20, 0.48);
+    }
   };
 
   // === SCENE ===
@@ -3397,21 +3483,30 @@
     }
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 6, 12), sup);
     hub.rotation.x = Math.PI / 2; hub.position.y = hubH; g.add(hub);
+    // Part A: ring, spokes and capsules live in a `wheel` sub-group centred
+    // on the hub, with hub-relative positions, so update() can spin the lot
+    // with one rotation.z write. The capsules are spheres scaled along z —
+    // the rotation axis — so they stay round under rotation and need no
+    // counter-rotation. Legs/hub/base stay static. Zero new draw calls.
+    const wheel = new THREE.Group();
+    wheel.position.y = hubH;
     const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.45, 6, 48), tube);
-    ring.position.y = hubH; ring.castShadow = true; g.add(ring);
+    ring.castShadow = true; wheel.add(ring);
     const N = isMobilePerf ? 18 : 24;
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2;
       const cx = Math.cos(a) * R;
-      const cy = hubH + Math.sin(a) * R;
+      const cy = Math.sin(a) * R;
       const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, R, 4), tube);
-      spoke.position.set(cx / 2, hubH + Math.sin(a) * R / 2, 0);
+      spoke.position.set(cx / 2, cy / 2, 0);
       spoke.rotation.z = a + Math.PI / 2;
-      g.add(spoke);
+      wheel.add(spoke);
       const c = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), cap);
       c.position.set(cx, cy, 0); c.scale.z = 1.5;
-      g.add(c);
+      wheel.add(c);
     }
+    g.add(wheel);
+    g.userData.wheel = wheel;
     const base = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 18), sup);
     base.position.y = 2; base.castShadow = true; g.add(base);
     g.position.set(x, 0, z); return g;
@@ -3497,7 +3592,8 @@
   scene.add(buildArtScience(70, -100));   addCollider(70, -100, 24, 24, 32);
   scene.add(buildHelixBridge(-60, 100, Math.PI / 2.4));
                                           addCollider(-60, 100, 28, 28, 11);
-  scene.add(buildFlyer(310, 30));         addCollider(310, 30, 38, 38, 82);
+  const flyer = buildFlyer(310, 30);      // Part A: captured — update() spins the wheel
+  scene.add(flyer);                       addCollider(310, 30, 38, 38, 82);
   scene.add(buildHDB(380, 220));          addCollider(380, 220, 30, 30, 48);
   scene.add(buildHDB(-380, -200));        addCollider(-380, -200, 30, 30, 48);
 
@@ -4317,6 +4413,13 @@
   // v13: per-difficulty ZOOOM thresholds (correct answers needed to fill bar).
   const ZOOM_THRESHOLDS = { 1: 5, 2: 7, 3: 10, 4: 10 };
   const ZOOM_SPEED_MULT = 2.2;
+  // Part A (v15): Singlish streak cheers — the headline ladder for every
+  // 5th-streak WOW. Escalates to 25 then cycles. All positive, kid-safe lah.
+  const SINGLISH_PHRASES = ['SHIOK!', 'STEADY LAH!', 'POWER LAH!', 'WAH, SO ZAI!', 'HUAT AH!'];
+  function SINGLISH_LADDER(streak) {
+    const step = Math.max(1, Math.floor(streak / 5));   // 5→1, 10→2, … 25→5, 30→1 …
+    return SINGLISH_PHRASES[(step - 1) % SINGLISH_PHRASES.length];
+  }
 
   try {
     game.bestScore = parseInt(localStorage.getItem('topsum_best') || '0', 10) || 0;
@@ -4715,6 +4818,19 @@
       return { line: new THREE.Line(geo, mat), positions, count: 0 };
     }
 
+    // Part A: repaint a trail's color buffer with a tint (alpha-faded toward
+    // the tail, same falloff buildTrail bakes in). Trails are reused between
+    // flybys, so callers must explicitly reset to white when not festive.
+    function setTrailTint(trail, r, g, b) {
+      const colorAttr = trail.line.geometry.attributes.color;
+      const arr = colorAttr.array;
+      for (let i = 0; i < TRAIL_LEN; i++) {
+        const a = 1 - i / TRAIL_LEN;
+        arr[i*3] = a * r; arr[i*3+1] = a * g; arr[i*3+2] = a * b;
+      }
+      colorAttr.needsUpdate = true;
+    }
+
     const jets = FORMATION.map(offset => {
       const jet = buildJet();
       const trail = buildTrail();
@@ -4723,21 +4839,34 @@
     });
 
     let active = false;
+    let requested = false;   // Part A Feature 4: pending streak-salute pass
+    let saluting = false;    // true while the current flypast IS a salute
     let nextAt = 18;     // first flyby ~18s in
     let startT = 0, dur = 0;
     let path = null;
     root.visible = false;
 
-    function planFlyby(time) {
+    function planFlyby(time, salute) {
       const angle = Math.random() * Math.PI * 2;
       const dist = 1700;
-      const altitude = 310 + Math.random() * 80;
+      // Feature 4: a salute flies LOW (~190–230 vs the 310–390 ambient
+      // cruise) — the from→to chord already runs straight over bay center,
+      // so dropping the altitude is what turns specks into jets.
+      const altitude = salute ? 190 + Math.random() * 40 : 310 + Math.random() * 80;
       const from = new THREE.Vector3(Math.cos(angle) * dist, altitude,  Math.sin(angle) * dist);
       const to   = new THREE.Vector3(-Math.cos(angle) * dist, altitude, -Math.sin(angle) * dist);
       path = { from, to };
       dur = 9 + Math.random() * 3;
-      startT = time; active = true; root.visible = true;
-      jets.forEach(j => { j.trail.count = 0; j.trail.line.geometry.setDrawRange(0, 0); });
+      startT = time; active = true; saluting = !!salute; root.visible = true;
+      // Feature 3: festive contrails — jets 0/2/4 stream white, 1/3 stream
+      // SG red. Non-festive flights explicitly reset every trail to white.
+      const fest = window.festiveActive();
+      jets.forEach((j, i) => {
+        j.trail.count = 0;
+        j.trail.line.geometry.setDrawRange(0, 0);
+        if (fest && i % 2 === 1) setTrailTint(j.trail, 0.86, 0.21, 0.27);
+        else setTrailTint(j.trail, 1, 1, 1);
+      });
     }
 
     const _lead = new THREE.Vector3();
@@ -4747,18 +4876,25 @@
     const _pos   = new THREE.Vector3();
 
     function tick(time) {
-      if (Settings.timeOfDay !== 'day') {
+      // Part A Features 3+4 share this gate: ambient flybys run by day OR
+      // any time of day when festive; a streak salute (requested, or already
+      // airborne) punches through the sunset gate even when not festive.
+      // Ambient (non-salute) flights still cancel on a mid-air mode switch.
+      const fest = window.festiveActive();
+      if (Settings.timeOfDay !== 'day' && !fest && !requested && !(active && saluting)) {
         if (active) { active = false; root.visible = false; }
         return;
       }
       if (!active) {
-        if (time >= nextAt) planFlyby(time);
+        if (requested || time >= nextAt) { planFlyby(time, requested); requested = false; }
         return;
       }
       const u = (time - startT) / dur;
       if (u >= 1) {
         active = false; root.visible = false;
-        nextAt = time + 35 + Math.random() * 30;   // 35–65 s rest before next
+        // Feature 3: NDP-rehearsal tempo when festive — 14–24 s rests
+        // instead of the ambient 35–65 s.
+        nextAt = time + (fest ? 14 + Math.random() * 10 : 35 + Math.random() * 30);
         return;
       }
       _dir.subVectors(path.to, path.from).normalize();
@@ -4787,7 +4923,11 @@
       });
     }
 
-    return { root, tick };
+    // Part A Feature 4: summon a low salute pass. While a flypast is already
+    // airborne the request is dropped (not queued) — the sky is busy anyway.
+    function requestFlyby() { if (!active) requested = true; }
+
+    return { root, tick, requestFlyby };
   })();
   scene.add(fighterFormation.root);
 
@@ -5080,6 +5220,9 @@
     { x: -30, z: -180 },
     { x: 70,  z: 270  }
   ];
+  // Part A: NDP red/white — picked ~70% of the time when festive. Orthogonal
+  // to the D4 site selection below: site says WHERE, palette says WHAT COLOR.
+  const FW_PALETTE_NDP = [[1, .2, .25], [1, 1, 1]];
   // D4: when festive, fireworks spread along the shoreline arc like the NDP
   // finale photo — anchored at NS Square (the new centerpiece) plus rim
   // points along the promenade garland. Pure site-selection swap; the pool
@@ -5129,7 +5272,11 @@
     slot.phaseTime = 0;
     slot.totalLife = 0;
     slot.sizeMult = sizeMult || 1;
-    const c = FW_PALETTE[Math.floor(Math.random() * FW_PALETTE.length)];
+    // Part A: festive bursts lean red/white ~70% of the time; the remaining
+    // 30% keep the full palette so the sky doesn't go monotone.
+    const c = (window.festiveActive() && Math.random() < 0.7)
+      ? FW_PALETTE_NDP[Math.floor(Math.random() * FW_PALETTE_NDP.length)]
+      : FW_PALETTE[Math.floor(Math.random() * FW_PALETTE.length)];
     slot.color = c;
     slot.mat.color.setRGB(c[0], c[1], c[2]);
     slot.light.color.setRGB(c[0], c[1], c[2]);
@@ -5146,7 +5293,14 @@
     slot.light.intensity = 0;
   }
   function tickFireworks(dt, time) {
-    if (Settings.timeOfDay !== 'sunset') {
+    const fest = window.festiveActive();
+    const sunset = Settings.timeOfDay === 'sunset';
+    // Part A: festive days earn fireworks around the clock — and an active
+    // ZOOOM keeps its force-fired bursts alive in plain day mode. The
+    // !game.zoomActive clause fixes a real v13 bug: day-mode ZOOOM fireworks
+    // were force-launched by update() and then reset to idle HERE on the
+    // very next frame, so they never rendered.
+    if (!sunset && !fest && !game.zoomActive) {
       fireworks.forEach(f => {
         if (f.pts.visible) f.pts.visible = false;
         f.light.intensity = 0;
@@ -5154,11 +5308,17 @@
       });
       return;
     }
-    fwLaunchTimer -= dt;
-    if (fwLaunchTimer <= 0) {
-      launchFirework();
-      // v13: tightened from 6-8s to 4-5.5s for slightly denser sky
-      fwLaunchTimer = 4 + Math.random() * 1.5;
+    // Auto-launcher runs at sunset or when festive (a plain-day ZOOOM only
+    // animates its own force-fired rockets — no ambient cadence).
+    if (sunset || fest) {
+      fwLaunchTimer -= dt;
+      if (fwLaunchTimer <= 0) {
+        launchFirework();
+        // v13: 4-5.5s sunset cadence; Part A: festive daytime runs a touch
+        // sparser (5-7s) so the blue sky doesn't read as pure spectacle.
+        fwLaunchTimer = (fest && !sunset) ? 5 + Math.random() * 2
+                                          : 4 + Math.random() * 1.5;
+      }
     }
     for (const f of fireworks) {
       if (f.state === 'idle') continue;
@@ -5410,6 +5570,12 @@
   addEventListener('visibilitychange', () => { if (document.hidden) joyReset(); });
 
   Settings.load();
+
+  // Part A: greet auto-activated National Day mode once at the title screen —
+  // only when it kicked in by date (not via ?ndp=1, not pinned by the checkbox).
+  if (bootIsAug9 && !forceFestive && Settings.festive === null) {
+    setTimeout(() => showToast('🇸🇬 HAPPY NATIONAL DAY!'), 1300);
+  }
 
   function toggleSound() {
     Settings.sound = !Settings.sound;
@@ -5818,7 +5984,13 @@
     setTimeout(() => document.getElementById('slowmo-overlay').classList.remove('show'), game.slowmoMax * 1000);
     Sound.flow();
     const f = document.getElementById('feedback');
-    f.innerHTML = `FLOW ×${game.flowMult}<span class="sub">PERFECT RUN</span>`;
+    // Part A: Singlish cheer takes the headline; the old FLOW ×N text
+    // demotes to the sub-line. Same #feedback.flow styling, no new CSS.
+    if (Settings.singlish) {
+      f.innerHTML = `${SINGLISH_LADDER(game.streak)}<span class="sub">FLOW ×${game.flowMult} · PERFECT RUN</span>`;
+    } else {
+      f.innerHTML = `FLOW ×${game.flowMult}<span class="sub">PERFECT RUN</span>`;
+    }
     f.className = 'show flow';
     clearTimeout(showFeedback._t);
     showFeedback._t = setTimeout(() => f.className = '', 1400);
@@ -5890,8 +6062,11 @@
         // Part E3: next spawn uses the long scenic gap — a deliberate
         // breather after every 5-streak WOW moment.
         game.breatherPending = true;
-        // v11: streak finale firework over the bay (sunset only — fireworks check internally)
-        if (Settings.timeOfDay === 'sunset') {
+        // v11: streak finale firework over the bay. Part A widened the gate
+        // from sunset-only: festive mode earns finales (and the D4 deca-
+        // streak volley below) at any time of day — tickFireworks no longer
+        // resets them when festive.
+        if (Settings.timeOfDay === 'sunset' || window.festiveActive()) {
           if (window.festiveActive() && game.streak % 10 === 0) {
             // D4: festive deca-streak — a quick volley walking the shoreline
             // arc, NS Square first. (The full RSAF salute is a later part;
@@ -5904,6 +6079,15 @@
             launchFirework(window.festiveActive() ? FW_SITES_FESTIVE[0] : FW_SITES[0], 2);
           }
         }
+        // Part A Feature 4: every 10th streak summons the five-jet formation
+        // for a low salute pass (works in day and sunset; if a flypast is
+        // already airborne, requestFlyby drops the request). Toast at +900ms
+        // sits clear of the WOW feedback (separate #feedback node, 1.4s) and
+        // alongside the festive volley setTimeouts (0.38/0.76s, no UI).
+        if (game.streak % 10 === 0) {
+          fighterFormation.requestFlyby();
+          setTimeout(() => showToast('🛩 RSAF SALUTE INBOUND!'), 900);
+        }
         if (game.lives < MAX_LIVES) {
           game.lives++;
           setTimeout(() => {
@@ -5914,6 +6098,8 @@
       } else {
         const tinyMsgs = ['YAY!', 'GREAT!', 'AWESOME!', 'WONDERFUL!', 'YOU DID IT!', 'NICE WORK!'];
         const normalMsgs = ['CORRECT!', 'NICE!', 'YES!', 'GOT IT!', 'SHARP!'];
+        // Part A: one Singlish entry in the everyday praise pools too
+        if (Settings.singlish) { tinyMsgs.push('SWEE LA!'); normalMsgs.push('SWEE LA!'); }
         const pool = game.level === 1 ? tinyMsgs : normalMsgs;
         let title = pool[Math.floor(Math.random() * pool.length)];
         let sub = '';
@@ -6025,6 +6211,12 @@
 
   function startGame(level, useChallenge) {
     Sound.init(); Sound.resume(); Sound.click();
+    // Part A: short original festive fanfare, once per session, after the
+    // click so the AudioContext is warm. (Original sting — not the anthem.)
+    if (festiveActive() && !festiveFanfarePlayed) {
+      festiveFanfarePlayed = true;
+      setTimeout(() => Sound.festive(), 350);
+    }
     // v14: Decide the seed for this flight. If the player accepted an
     // incoming challenge AND the difficulty matches, reuse the challenger's
     // seed so both players see the same questions in the same order.
@@ -6266,6 +6458,10 @@
       const s = 1 + Math.sin(t * 3) * 0.1;
       merlion.userData.spout.scale.set(s, 1, s);
     }
+
+    // Part A: the Singapore Flyer wheel turns — accumulated t keeps it
+    // frame-rate independent; 0.06 rad/s ≈ one revolution every ~105 s.
+    flyer.userData.wheel.rotation.z = t * 0.06;
 
     boats.forEach(b => positionBoat(b, t));
 
