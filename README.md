@@ -103,7 +103,7 @@ Each correct answer fills a glowing **ZOOOM bar** at the top of the screen — a
 Charge thresholds vary by difficulty — Tiny: 5, Easy: 7, Medium / Hard: 10. Tap the bar mid-question and it'll auto-fire after you answer — no rug-pull.
 
 ### ⚡ Speed Mode
-For fast players who find the base pace too gentle. Three tiers, picked from the title screen, cycled by the in-game ⚡ icon, or stepped via the `S` key:
+For fast players who find the base pace too gentle. Three tiers, picked from the title screen, cycled by the in-game ⚡ icon, or stepped via the `X` key:
 
 | Tier | Multiplier | Icon |
 |---|---|---|
@@ -191,7 +191,7 @@ Top Sum is set over Marina Bay, and v15 leans in:
 | `M` | Toggle sound |
 | `C` | Toggle auto-center |
 | `T` | Toggle Day / Sunset |
-| `S` | Cycle Speed Mode (Off → Fast → Faster) |
+| `X` | Cycle Speed Mode (Off → Fast → Faster) |
 | `Z` | Fire ZOOOM (when charged) |
 | `Esc` | Pause / resume |
 
