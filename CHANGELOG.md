@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v16] — 2026-06-11
+
+**Marina Bay open world rebuilt from the real map.** The old world was a mirror image of Singapore. Root cause: `buildLand`'s `ExtrudeGeometry` + `rotateX(-π/2)` maps shape-y to world **−z**, so every coastline polygon rendered flipped east–west while comments assumed otherwise. v16 fixes the transform at the source and rebuilds the whole world from real lat/lon at 1:2 scale with true compass coordinates (north = −z, east = +x), so what you see in flight finally matches Google Maps.
+
+### Changed
+- **No more islands floating in the sea** — the world is one continuous urban landmass running past the fog horizon, with the *water* carved in: the Marina reservoir (bay + **Singapore River** + Helix mouth + **Kallang basin**, sealed by the **Marina Barrage** dam) is a hole in the land, and the open sea is cut along the real south/east coastline. **Bay East Garden** is the green peninsula between the basin and the sea.
+- **Every landmark anchored to its real position** and verified on land by an offline point-in-polygon sweep — no more towers standing in the water. CBD behind Collyer Quay on the west shore; civic district + Esplanade + the Float + Suntec + the Flyer along the north; ArtScience on its bay-jutting promontory, MBS's slab running N–S with the cantilever prow toward ArtScience, and Gardens by the Bay down the east; the Merlion at the river-mouth corner with the Fullerton just SW; MBFC at the SW corner. A bumboat now cruises the river past Boat Quay.
+- **The city reads as a city**: district ground plates and asphalt roads under the built-up quarters, the **Benjamin Sheares/ECP viaduct** striding the basin east of the Flyer (with its own headlight stream), **Boat Quay and Clarke Quay shophouse rows** in pastel, the **Padang** with colonial civic blocks and a Victoria clock tower, the **Gardens domes** (Flower Dome + Cloud Forest), **Suntec's five towers arced around a gold Fountain of Wealth**, the **Marina Barrage** visitor centre with its grass roof, and background mid-rises so the skyline doesn't just stop.
+- **Garden city pass** — every tree in the world now comes from a two-draw-call instanced planter (~400 trees): avenue rows along every road, park clusters (Esplanade Park, the Padang fringe, Gardens by the Bay, Kallang riverside), shore strips (Bay East Garden, East Coast Park, the strait-facing shore) and a land-checked city-wide scatter — raintree greens with pink trumpet-tree and golden flame accents.
+- **A skyline ring of recognizable landmarks at distance**: the **National Stadium** dome at Kallang (its real spot at the basin's end), the **Swissôtel Stamford** twin slab behind the Padang, the **Sultan Mosque**'s gold dome in Kampong Glam, **Pinnacle@Duxton**'s seven skybridge-linked towers above a **Chinatown shophouse field** with the **Buddha Tooth Relic Temple**, **Raffles Hotel**, a forested **Fort Canning hill**, an **Orchard-road tower cluster** on the NW horizon, **Tanjong Pagar port** gantry cranes and container stacks on the strait coast, **cargo ships at anchor** offshore (the eternal Singapore horizon), and three more **HDB heartland estates** ringing the core.
+- **Flight path redesigned** as a counterclockwise bay tour in real compass order: south-shore vista → a long S→N **skypark skim down the full MBS slab** → over the Helix mouth → Flyer pass → Suntec turn → the Float and Esplanade → river mouth → CBD east-face run → MBFC corner. Offline drift-envelope sweep: zero centerline contacts; envelope contacts only at the four deliberately-reachable structures (MBS skypark, Flyer, two CBD towers). Lap ≈ 2050 m, max pitch ≈ 22°; a headless autoplay run over multiple laps confirms zero building hits.
+- **Boats, ambient traffic, the shoreline garland, fireworks sites and the Spectra lasers** all re-anchored to the new geography (Spectra had been left behind at a pre-v15.1 MBS position).
+
+### Fixed
+- **The land-shape mirror** described above — the actual root cause of every "the map is flipped" symptom since the skyline was first laid out.
+- **The flag Chinook flew backwards** — its heading was exactly π off the orbit velocity, so it orbited tail-first with the flag streaming ahead of it.
+- **The Singapore flag was mirrored** — the crescent and stars were drawn at the fly end of the flag; they now sit at the hoist, where the tow line attaches.
+
+---
+
+## [v15.1] — 2026-06-10
+
+**Geography remap.** Marina Bay now matches the real map: the Helix Bridge actually bridges something, NS Square and the Merlion sit on their proper shores, the Bayfront trio moved to the true south-east, and two new icons join the skyline.
+
+### Added
+- **Fullerton Hotel** — a low colonial palazzo beside the Merlion (real adjacency), with a colonnade facade that glows warmly at dusk.
+- **MBFC towers** — a trio of dark-glass financial-centre towers on the Marina South west strip, with a blinking beacon on the tallest.
+- **Marina East promenade + garland extension** — the shoreline light garland now crosses the Helix deck and runs up the east shore past NS Square, with matching walking paths.
+
+### Changed
+- **Helix Bridge** re-anchored over the real east channel — both deck ends land on the Marina South / Marina East banks, and the ambient traffic route crosses it. The central bay is now collider-free for boats.
+- **NS Square** anchored on the Marina East shore: grandstand on land, circular platform jutting west over the water — the real Float anchoring. Festive fireworks anchor moved with it.
+- **Merlion** moved to the civic water's edge, rotated to spout **east into the bay**.
+- **Bayfront accuracy** — MBS, the ArtScience Museum (disk rim now touching the shoreline) and the Supertree Grove (rotated so the grove elongates north–south, like the real Gardens) shifted to the true south-east Bayfront.
+- **Flight path retuned** around the moved MBS: the skypark close-pass is geometrically identical relative to the building; the descent leg now passes east of the towers. Re-verified offline — same answer-cadence envelope as v15 (9–11 s average gaps, ≥2.9 s sightlines at top speed) and the same three deliberately-reachable structures in the drift-envelope sweep, with zero centerline contacts. Lap 2587 m → 2697 m.
+
+---
+
 ## [v15] — 2026-06-10
 
 **Singapore Flavor Pack + a Cities: Skylines world pass.** Singlish cheers, a full National Day mode, an NS Square landmark, a skyline rebuilt on shared lit-facade materials, a Gold Cockpit UI refresh, pacing v3, and privacy-first analytics that ship switched off.
