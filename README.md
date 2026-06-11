@@ -92,7 +92,7 @@ Five plane tiers swap in automatically as your streak builds:
 Lose your streak and you drop back. Stay in flow to keep flying the best plane.
 
 ### 🚀 ZOOOM Boost
-Each correct answer fills a glowing **ZOOOM bar** at the top of the screen. When it's full, tap the bar (or press `Z`) to fire:
+Each correct answer fills a glowing **ZOOOM bar** at the top of the screen — and the **star coins** scattered along long stretches top it up too (a quarter-answer each). When it's full, tap the bar (or press `Z`) to fire:
 
 - A 3/4-circuit cinematic lap — no math questions, just sky
 - Two F-16 escort jets fade in from behind, lock onto your wings, and peel off climbing into the distance
@@ -133,6 +133,7 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 ### 🌆 Cinematic Marina Bay World
 - A continuous open-world Singapore rebuilt from the real map at 1:2 scale (v16) with true compass orientation — the water (bay, **Singapore River**, **Kallang basin**, the open strait) is carved out of one urban landmass, sealed by the **Marina Barrage**
 - A **CBD canyon flythrough** (v17): on the west shore the flight path dives low and threads a tower-lined avenue between the **Raffles Place** skyscrapers, then sweeps through the expanded **MBFC** financial district at the bay's south-west corner — close enough to feel like threading the towers, while the answer gates stay clear
+- **No two laps the same** (v18): each lap the route shifts slightly left, right, up or down on the open legs (the precision sections stay exact), so the tour never feels like it's on rails
 - The **Merlion** at the river mouth (a bumboat cruises past the pastel **Boat Quay shophouses**) with the **Fullerton Hotel** next door, the **Padang** and colonial civic blocks, the **Esplanade**, **the Float (NS Square)**, **Suntec's five towers around the Fountain of Wealth** and the rotating **Singapore Flyer** along the north, and **ArtScience, MBS, the Gardens domes and the Supertree Grove** down the east shore
 - The **Helix Bridge** spans the bay's NE mouth on its real N–S axis, and the **Benjamin Sheares viaduct** strides the basin with its own headlight stream — **Bay East Garden** is the green peninsula beyond
 - **A true garden city**: ~400 instanced trees (avenue rows on every road, park clusters, shore strips, raintree greens with pink trumpet and golden flame accents), plus a skyline ring of distant landmarks — the **National Stadium** dome at Kallang, **Swissôtel Stamford**, the **Sultan Mosque**, **Pinnacle@Duxton** over Chinatown's shophouses and the **Buddha Tooth temple**, **Raffles Hotel**, a forested **Fort Canning hill**, an Orchard tower cluster, **Tanjong Pagar port cranes**, and cargo ships at anchor in the strait
