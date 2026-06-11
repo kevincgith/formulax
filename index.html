@@ -1,8 +1,23 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v16)
+  TOP SUM · Math Flight (v17)
   ------------------------------------------------------------
+  v17 changes — CBD CANYON FLYTHROUGH + MBFC DISTRICT:
+    · The west-shore CBD is rebuilt as a flythrough CANYON: the
+      flight path now DIVES to Y~56 and threads a tower-lined
+      avenue of 120-145-unit skyscrapers down both sides
+      (Raffles Place), instead of skirting past them up high.
+    · MBFC grown from a trio into a full financial sub-district
+      at the bay's SW corner, threaded low on the way out.
+    · Both rows are placed ~44 off the actual CURVED path normal
+      (not a straight line), so clearance stays uniform: a centred
+      pass and the +/-16 answer gates clear, but a hard full
+      drift can still clip a tower — the intended thrill.
+    · Offline-verified (drift-envelope sweep): zero centerline
+      contacts, all towers on land, lap ~2065m, max pitch ~22°,
+      floor Y~56. New urban ground plates under both districts.
+
   v16 changes — MARINA BAY OPEN WORLD REBUILT FROM THE REAL MAP:
     · Root cause of the old mirror-image map found and fixed:
       buildLand's ExtrudeGeometry + rotateX(-PI/2) maps shape-y
@@ -2988,7 +3003,8 @@
     plate.receiveShadow = true;
     scene.add(plate);
   }
-  addPlate(-292, 55, 170, 290, 0x8f8b84);   // CBD / Raffles Place
+  addPlate(-282, 55, 200, 290, 0x8f8b84);   // CBD / Raffles Place (canyon avenue)
+  addPlate(-205, 272, 150, 170, 0x8f8b84);  // MBFC financial district (SW corner)
   addPlate(-230, -160, 106, 36, 0x97938b);  // civic district strip
   addPlate(232, -272, 195, 145, 0x8f8b84);  // Marina Centre / Suntec
   addPlate(172, 95, 65, 160, 0x94908a);     // Bayfront (MBS surrounds)
@@ -4347,20 +4363,29 @@
   scene.add(buildShearesBridge(288, -261, 472, -298));
                                           addCollider(380, -279, 95, 22, 17);
 
-  // CBD on the west shore behind Collyer Quay (Raffles Place), all towers
-  // south of the river notch.
-  const cbdSeeds = [[-330,50],[-310,90],[-290,30],[-340,-20],[-300,-60],
-    [-360,10],[-320,130],[-282,-75],[-345,70],[-300,160]];
-  cbdSeeds.forEach((p, i) => {
-    const w = 20 + (i*7)%18;
-    const h = 50 + (i*17)%90;
-    const d = 18 + (i*11)%14;
-    // i=4 (h 118) and i=5 (h 135) are the two tallest — they get the masts.
-    // Colliders fold in the crown/mast height via userData.totalH (C2).
-    const b = buildBuilding(p[0], p[1], w, h, d, i,
-      cbdFacadeMats[i % cbdFacadeMats.length], i === 4 || i === 5);
+  // v17: the CBD rebuilt as a flythrough CANYON down the west shore. The
+  // flight path's west run (P14-P16) descends to Y~56 and threads a
+  // tower-lined avenue. The two front rows are placed ~44 off the actual
+  // (curved) path centerline — offline-verified so a centred pass AND the
+  // answer gates at +/-16 clear, while a hard full drift can still clip
+  // (that's the thrill). The two tallest carry antenna masts (auto-beaconed).
+  // A short back row sits well west for skyline depth. [x, z, w, h, seed, mast]
+  const cbdTowers = [
+    [-292.1, -61.7, 22, 110, 3, 0], [-207.9, -36.3, 22, 120, 2, 0],
+    [-298.5,  -0.5, 22, 130, 7, 0], [-210.6,  -6.1, 22, 145, 1, 1],
+    [-292.6,  49.2, 22, 140, 9, 1], [-205.0,  40.2, 22, 100, 5, 0],
+    [-290.1,  92.1, 22, 105, 0, 0], [-202.3,  86.2, 22, 135, 8, 0],
+    [-285.1, 137.9, 22, 125, 11, 0], [-198.2, 123.9, 22, 115, 4, 0],
+    [-278.3, 176.2, 22,  90, 14, 0], [-191.0, 165.1, 22,  95, 6, 0],
+    // back row (non-contactable, skyline depth)
+    [-336.0, -30.0, 24,  80, 21, 0], [-336.0,  30.0, 22,  95, 27, 0],
+    [-336.0,  90.0, 24,  85, 23, 0], [-336.0, 150.0, 22,  75, 29, 0]
+  ];
+  cbdTowers.forEach(([x, z, w, h, seed, mast], i) => {
+    const b = buildBuilding(x, z, w, h, w, seed,
+      cbdFacadeMats[i % cbdFacadeMats.length], !!mast);
     scene.add(b);
-    addCollider(p[0], p[1], w/2 + 3, d/2 + 3, b.userData.totalH + 2);
+    addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
   });
   // v16.1: Suntec's five towers in their real arc around the Fountain of
   // Wealth, on Marina Centre behind the promenade NW of the Flyer.
@@ -4385,22 +4410,25 @@
     scene.add(b);
     addCollider(x, z, 15, 14, b.userData.totalH + 2);
   });
-  // v16: MBFC trio at its real spot — the bay's SW corner, ~200 m inland of
-  // Marina Blvd. The P16->P0 leg passes north of T1 with the drift envelope
-  // 12 short of the collider, so all three stay non-contactable; the one
-  // setback crown stays on T3.
+  // v17: MBFC grown from a trio into a full financial sub-district at the
+  // bay's SW corner. The path's P16->P17 leg threads it low (Y~64); six
+  // towers flank the corridor (~44 off the curved centerline, verified —
+  // gates clear, hard drift clips), two of them masted. Three more form the
+  // skyline at the loop's far SW corner, beyond the path. [x, z, w, h, seed, mast]
   const mbfcTowers = [
-    [-190, 290, 22, 60, 2],   // T1 — plain roof (roll 17)
-    [-215, 315, 26, 72, 4],   // T2 — tallest, plain roof (roll 11)
-    [-182, 332, 24, 66, 3]    // T3 — setback crown (roll 4), totalH 80.5
+    [-264.5, 241.1, 22, 130, 7, 1], [-183.2, 207.4, 22, 122, 2, 1],
+    [-224.4, 290.2, 20,  96, 9, 0], [-176.2, 216.6, 20,  92, 4, 0],
+    [-166.3, 314.2, 22, 108, 3, 0], [-143.4, 229.3, 22, 100, 5, 0],
+    // SW-tip skyline cluster (non-contactable)
+    [-214.0, 336.0, 26, 116, 12, 0], [-240.0, 316.0, 22, 102, 15, 0],
+    [-188.0, 346.0, 24,  90, 18, 0]
   ];
-  mbfcTowers.forEach(([x, z, fp, h, seed], i) => {
-    const b = buildBuilding(x, z, fp, h, fp, seed, cbdFacadeMats[i % cbdFacadeMats.length]);
+  mbfcTowers.forEach(([x, z, w, h, seed, mast], i) => {
+    const b = buildBuilding(x, z, w, h, w, seed,
+      cbdFacadeMats[i % cbdFacadeMats.length], !!mast);
     scene.add(b);
-    addCollider(x, z, fp/2 + 3, fp/2 + 3, b.userData.totalH + 2);
+    addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
   });
-  // Plain beacon tip on T2 (no mast — keeps the skyline tip set tidy)
-  warnBeaconTips.push([-215, 73.5, 315]);
 
   // === v16.2: GARDEN CITY RING — recognizable landmarks at distance ===
   // National Stadium at the Kallang end of the basin (its real spot)
@@ -4544,14 +4572,17 @@
   //   P10-P12: westbound along the north shore over Suntec, the Float and
   //            the Esplanade durians
   //   P13:     river-mouth corner — Merlion below left
-  //   P14-P15: CBD east-face run (drift-reachable towers at -282,-75 and
-  //            -290,30) down the west shore
-  //   P16:     SW corner past MBFC, closing the loop onto the vista
+  //   P14-P16: ★ CBD CANYON DIVE — drop to Y≈56 and thread the tower-lined
+  //            avenue down the west shore, skyscrapers towering on both sides
+  //   P17:     low pass through the MBFC financial district at the SW corner,
+  //            then climb back out onto the opening vista (P0)
   //
   // Safety verified by the offline drift-envelope sweep (xMax=28, yMax=16):
-  // zero centerline contacts; envelope contacts only at the deliberate set
-  // (MBS skypark from above, Flyer from above, CBD7/CBD2 at full lateral
-  // drift). Lap ~2050m; max pitch ~22° on the P2→P3 climb.
+  // zero centerline contacts — the canyon towers sit ~44 off the curved
+  // centerline so a centred pass and the +/-16 answer gates clear, while a
+  // hard full drift can still clip (the intended thrill). Envelope contacts:
+  // MBS skypark & Flyer from above (as before) plus the CBD/MBFC rows at full
+  // lateral drift. Lap ~2065m; max pitch ~22° on the P2→P3 climb; floor Y≈56.
   const pathPoints = [
     new THREE.Vector3( -60,  80,  290),  // P0  start — south-shore vista
     new THREE.Vector3(  80,  75,  300),  // P1
@@ -4567,9 +4598,10 @@
     new THREE.Vector3(  80,  92, -320),  // P11 westbound over Marina Centre
     new THREE.Vector3( -80,  88, -265),  // P12 over the Esplanade
     new THREE.Vector3(-160,  85, -185),  // P13 river mouth, Merlion below left
-    new THREE.Vector3(-248,  95,  -55),  // P14 CBD east-face run
-    new THREE.Vector3(-250, 100,  125),  // P15
-    new THREE.Vector3(-200,  95,  230)   // P16 SW corner, MBFC to the right
+    new THREE.Vector3(-248,  66,  -55),  // P14 ★ dive into the CBD canyon
+    new THREE.Vector3(-248,  56,   55),  // P15 ★ deep in the canyon (floor)
+    new THREE.Vector3(-238,  60,  150),  // P16 canyon south end, begin the curve
+    new THREE.Vector3(-205,  64,  250)   // P17 low through MBFC, SW corner
   ];
   // Tension 0.5 = standard centripetal Catmull-Rom (smoother than the old 0.4).
   const path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);

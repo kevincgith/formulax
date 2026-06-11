@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v17] — 2026-06-11
+
+**The CBD becomes a flythrough canyon.** The west-shore run of the flight path used to skirt *past* the financial district up high; now it **dives to Y≈56 and threads a tower-lined avenue**, skyscrapers towering on both sides — a genuine canyon run through downtown.
+
+### Added
+- **CBD canyon (Raffles Place)** — rebuilt as two rows of 120–145-unit (240–290 m) towers flanking the path's west run, two of them masted. The path descends into it (new P14–P16) and threads between the rows.
+- **MBFC financial district** — grown from a trio into a full sub-district of nine towers at the bay's SW corner, threaded low on the way out (new P17). New urban ground plates under both districts.
+
+### Changed
+- **Flight path re-tuned** — P14–P16 now dive into the CBD canyon (floor Y≈56) and P17 passes low through MBFC before the climb back onto the opening vista. Lap ≈ 2065 m, max pitch ≈ 22° (cadence envelope unchanged).
+- **Placement method** — canyon towers are positioned ~44 units off the *actual curved path normal* (not a straight line), so clearance stays uniform as the route bows: a centred pass and the ±16 answer gates clear with margin, while a **hard full ±28 drift can still clip a tower** — close but safe, with the thrill intact.
+
+### Verified
+- Offline drift-envelope sweep (xMax 28 / yMax 16): **zero centerline contacts**, all canyon/MBFC towers on land (point-in-polygon), envelope contacts only at the deliberate set (MBS skypark + Flyer from above, plus the CBD/MBFC rows at full lateral drift).
+
+---
+
 ## [v16] — 2026-06-11
 
 **Marina Bay open world rebuilt from the real map.** The old world was a mirror image of Singapore. Root cause: `buildLand`'s `ExtrudeGeometry` + `rotateX(-π/2)` maps shape-y to world **−z**, so every coastline polygon rendered flipped east–west while comments assumed otherwise. v16 fixes the transform at the source and rebuilds the whole world from real lat/lon at 1:2 scale with true compass coordinates (north = −z, east = +x), so what you see in flight finally matches Google Maps.
