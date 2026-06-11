@@ -1,8 +1,25 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  TOP SUM · Math Flight (v17)
+  TOP SUM · Math Flight (v18)
   ------------------------------------------------------------
+  v18 changes — COIN-CHARGED ZOOOM + PER-LAP PATH VARIATION:
+    · Sky-star coins now also charge the ZOOOM bar — a quarter
+      of a correct answer each (catch radius/score unchanged).
+    · The flight path shifts slightly every lap (left/right
+      ±20 m, up +14 m, or down −12 m) so consecutive loops
+      never feel identical. The shift fades to zero through
+      the three precision sections (MBS skypark skim, Flyer
+      pass, CBD canyon + MBFC) so their verified close-pass
+      geometry is untouched; the direction re-rolls mid-skim
+      where the shift is zero (seamless), never repeats the
+      previous lap, and is deterministic per lap (challenge
+      replays match). The pink guide tube rebuilds each lap to
+      show the shifted route. Offline-verified for all four
+      directions with real three@0.128: shifted centerline and
+      gate reach (±23.5) contact nothing; the drift-envelope
+      contact set is unchanged from v17.
+
   v17 changes — CBD CANYON FLYTHROUGH + MBFC DISTRICT:
     · The west-shore CBD is rebuilt as a flythrough CANYON: the
       flight path now DIVES to Y~56 and threads a tower-lined
@@ -4608,18 +4625,102 @@
   const pathLength = path.getLength();
   const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-  function getPathFrame(t) {
+  // === v18: PER-LAP PATH VARIATION ===
+  // Each lap the whole route shifts slightly — left/right (±10u = 20 m) or
+  // up/down (+7/−6) — so consecutive loops never feel identical. The shift
+  // is dir·w(u): w fades smoothly to ZERO through the three precision
+  // sections (MBS skypark skim, the Flyer pass, the CBD canyon + MBFC run)
+  // so the verified close-pass geometry there is untouched; the full shift
+  // only applies on the open legs. The direction re-rolls when the plane
+  // crosses mid-skim (where w=0, so nothing jumps), picked deterministically
+  // per lap (challenge replays see the same sequence) and never repeating
+  // the previous lap's direction. Offline-verified for all four dirs:
+  // shifted centerline and gate reach (±23.5) contact nothing; the
+  // drift-envelope contact set is unchanged from v17.
+  const VAR_DIRS = [[10, 0], [-10, 0], [0, 7], [0, -6]]; // right, left, up, down
+  const varState = { lap: 0, idxNow: 0, idxNext: 2 };
+  function varHash(k) { return (Math.imul(k, 2654435761) >>> 0) % 3; }
+  function varAdvance() {
+    varState.lap++;
+    varState.idxNow = varState.idxNext;
+    varState.idxNext = (varState.idxNext + 1 + varHash(varState.lap + 1)) % 4;
+  }
+  function varReset() {
+    varState.lap = 0;
+    varState.idxNow = 0;
+    varState.idxNext = (1 + varHash(1)) % 4;
+  }
+  varReset();
+  // Protected zones from path-param space (of 18 control points) into
+  // arc-length u-space, where pathT lives. ~52 m smoothstep shoulders.
+  const _varLens = path.getLengths(1024);
+  const _uAtParam = p => _varLens[Math.round(p / 18 * 1024)] / _varLens[1024];
+  const VAR_ZONES = [[2.8, 5.6], [7.9, 9.5], [13.45, 17.65]]
+    .map(([a, b]) => [_uAtParam(a), _uAtParam(b)]);
+  const VAR_SWITCH_U = _uAtParam(4); // mid-skim: w=0, seamless dir change
+  const VAR_RAMP = 52 / pathLength;
+  function varWeight(u) {
+    let w = 1;
+    for (const [a, b] of VAR_ZONES) {
+      let d;
+      if (u >= a && u <= b) d = 0;
+      else {
+        const da = Math.min(Math.abs(u - a), 1 - Math.abs(u - a));
+        const db = Math.min(Math.abs(u - b), 1 - Math.abs(u - b));
+        d = Math.min(da, db);
+      }
+      const s = Math.max(0, Math.min(1, d / VAR_RAMP));
+      w = Math.min(w, s * s * (3 - 2 * s));
+    }
+    return w;
+  }
+  // Gates/stars spawn AHEAD of the plane and can land past the mid-skim
+  // switch — they must be placed with the NEXT lap's dir so the world
+  // agrees with itself when the plane gets there.
+  function varDirAt(t) {
+    const a = game.pathT, s = VAR_SWITCH_U;
+    const crossed = a <= t ? (s > a && s <= t) : (s > a || s <= t);
+    return VAR_DIRS[crossed ? varState.idxNext : varState.idxNow];
+  }
+
+  function getPathFrame(t, varDir) {
     const pos = path.getPointAt(t);
     const tan = path.getTangentAt(t).normalize();
     const right = new THREE.Vector3().crossVectors(tan, WORLD_UP).normalize();
     const up = new THREE.Vector3().crossVectors(right, tan).normalize();
+    // v18: apply this lap's variation shift (lateral along right, vertical
+    // along world-y — matching the offline verification harness).
+    const d = varDir || varDirAt(t);
+    const w = varWeight(t);
+    if (w > 0) {
+      if (d[0]) pos.addScaledVector(right, d[0] * w);
+      if (d[1]) pos.y += d[1] * w;
+    }
     return { pos, tan, right, up };
   }
 
-  const tubeGeo = new THREE.TubeGeometry(path, isMobilePerf ? 200 : 320, 0.25, 6, true);
+  // The pink guide tube is rebuilt each lap so it shows the CURRENT lap's
+  // shifted route (the rebuild happens at the mid-skim switch, where the
+  // near-player stretch has w=0 and is identical before/after — no pop).
   const pathTubeMat = new THREE.MeshBasicMaterial({ color: 0xff2288, transparent: true, opacity: 0.35 });
   timeAware.pathTubeMat = pathTubeMat;
-  scene.add(new THREE.Mesh(tubeGeo, pathTubeMat));
+  let pathTubeMesh = null;
+  function rebuildVarTube() {
+    const dir = VAR_DIRS[varState.idxNow];
+    const NS = isMobilePerf ? 96 : 160;
+    const pts = [];
+    for (let i = 0; i < NS; i++) pts.push(getPathFrame(i / NS, dir).pos);
+    const c = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5);
+    const geo = new THREE.TubeGeometry(c, isMobilePerf ? 200 : 320, 0.25, 6, true);
+    if (pathTubeMesh) {
+      pathTubeMesh.geometry.dispose();
+      pathTubeMesh.geometry = geo;
+    } else {
+      pathTubeMesh = new THREE.Mesh(geo, pathTubeMat);
+      scene.add(pathTubeMesh);
+    }
+  }
+  rebuildVarTube();
 
   // === PLAYER PLANES (5 tiers, swap based on streak) ===
   // Each tier has a distinct silhouette, color palette, and signature
@@ -7102,6 +7203,8 @@
     game.lives = START_LIVES;
     game.score = 0; game.streak = 0; game.bestStreak = 0; game.totalCorrect = 0;
     game.invuln = 0; game.pathT = 0;
+    // v18: every flight starts the lap-variation sequence from the top
+    varReset(); rebuildVarTube();
     game.slowmo = 0; game.shake = 0;
     game.paused = false;
     game.offset.x = 0; game.offset.y = 0;
@@ -7363,6 +7466,15 @@
     const prevT = game.pathT;
     game.pathT = (game.pathT + (game.speed / pathLength) * dt) % 1;
 
+    // v18: lap-variation re-roll on crossing the mid-skim switch point
+    // (w=0 there, so the shifted world doesn't jump under the plane).
+    {
+      const s = VAR_SWITCH_U;
+      const sCrossed = game.pathT >= prevT ? (s > prevT && s <= game.pathT)
+                                           : (s > prevT || s <= game.pathT);
+      if (sCrossed) { varAdvance(); rebuildVarTube(); }
+    }
+
     let steerX = 0, steerY = 0;
     if (keys['ArrowLeft']  || keys['KeyA']) steerX -= 1;
     if (keys['ArrowRight'] || keys['KeyD']) steerX += 1;
@@ -7525,7 +7637,8 @@
     }
 
     // Part E4: sky-star collection — same pathT-crossing test as the gates.
-    // Catch within 9u awards +2 × flow; a miss just hides the star (no penalty).
+    // Catch within 9u awards +2 × flow AND a quarter-answer of ZOOOM charge
+    // (v18); a miss just hides the star (no penalty).
     if (!game.zoomActive) {
       for (const star of skyStars) {
         if (star.userData.pop > 0) {
@@ -7544,6 +7657,13 @@
         if (!reached) continue;
         if (shipPos.distanceTo(star.position) < 9) {
           game.score += 2 * game.flowMult;
+          // v18: stars also nudge the ZOOOM bar — a quarter of a correct
+          // answer each, so a clean 6-8 star run is worth ~1.5-2 answers.
+          if (game.zoomCharge < 1) {
+            const zThresh = ZOOM_THRESHOLDS[game.level] || 10;
+            game.zoomCharge = Math.min(1, game.zoomCharge + 0.25 / zThresh);
+            updateZoomBar();
+          }
           maybeUpdateBest();
           updateHUD();
           Sound.bonus();

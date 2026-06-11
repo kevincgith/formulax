@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v18] — 2026-06-11
+
+**Coins charge the ZOOOM bar, and no two laps fly the same.**
+
+### Added
+- **Sky-star coins charge ZOOOM** — each collected star now adds a quarter of a correct answer's charge to the ZOOOM bar (on top of its +2 × flow score), so a clean 6–8 star run between gates is worth roughly 1.5–2 answers of boost.
+- **Per-lap path variation** — every lap the whole route shifts slightly **left, right (±20 m), up (+14 m) or down (−12 m)**, so consecutive loops never feel identical. The direction is picked per lap (deterministic — challenge replays see the same sequence) and never repeats the previous lap's. The pink guide tube rebuilds each lap to show the current shifted route.
+
+### Safety
+- The shift **fades smoothly to zero through the three precision sections** — the MBS skypark skim, the Flyer pass, and the CBD canyon + MBFC run — so their verified close-pass geometry is untouched, and the direction re-roll happens mid-skim where the shift is zero (nothing jumps). Gates and stars that spawn across the re-roll point are placed with the next lap's direction so the world always agrees with itself.
+- Verified offline against the full collider set with real three@0.128, running the actual game code: for all four directions the shifted centerline and the gate reach (±23.5) contact nothing, and the drift-envelope contact set is unchanged from v17.
+
+---
+
 ## [v17] — 2026-06-11
 
 **The CBD becomes a flythrough canyon.** The west-shore run of the flight path used to skirt *past* the financial district up high; now it **dives to Y≈56 and threads a tower-lined avenue**, skyscrapers towering on both sides — a genuine canyon run through downtown.
