@@ -29,6 +29,18 @@
       of Wealth, the Marina Barrage with its grass-roof centre,
       district ground plates and asphalt roads so built-up
       quarters read as city, plus background mid-rises.
+    · GARDEN CITY pass: every tree in the world now comes from a
+      two-draw-call instanced planter (~400 trees: avenue rows
+      along all roads, park clusters, shore strips, a land-checked
+      city-wide scatter; raintree greens with pink trumpet and
+      golden flame accents). Skyline ring of distant landmarks:
+      National Stadium dome at Kallang, Swissotel Stamford behind
+      the Padang, Sultan Mosque's gold dome, Pinnacle@Duxton's
+      seven linked towers over a Chinatown shophouse field with
+      the Buddha Tooth temple, Raffles Hotel, a forested Fort
+      Canning hill, an Orchard tower cluster on the NW horizon,
+      Tanjong Pagar port cranes, and cargo ships at anchor in the
+      strait. Three more HDB estates ring the core.
     · Flight path redesigned as a counterclockwise bay tour:
       south-shore vista, a long S->N skypark skim down the MBS
       slab, overflight of the Helix, Flyer pass, Suntec turn,
@@ -2993,18 +3005,25 @@
     path.position.set((x1+x2)/2, y || 0.78, (z1+z2)/2);
     scene.add(path);
   }
-  // Asphalt roads (drawn just above the district plates)
-  const ROAD = 0x686c70;
-  function addRoad(x1, z1, x2, z2, w) { addPath(x1, z1, x2, z2, w || 7, ROAD, 0.82); }
-  // Marina Blvd
-  addRoad(-138, 205, -48, 233); addRoad(-48, 233, 52, 247); addRoad(52, 247, 122, 237);
-  // Collyer Quay / Fullerton Rd down the west shore (inland of the seawall)
-  addRoad(-176, -85, -172, -45); addRoad(-172, -45, -172, 30); addRoad(-172, 30, -157, 110);
-  addRoad(-157, 110, -140, 182);
-  // Raffles Ave along the north shore
-  addRoad(-138, -222, -22, -218); addRoad(-22, -218, 88, -203); addRoad(88, -203, 152, -183);
-  // Bayfront Ave east of MBS
-  addRoad(188, -58, 196, 40); addRoad(196, 40, 190, 132);
+  // Asphalt roads (drawn just above the district plates). Kept as a data
+  // array because the garden-city planter rows avenue trees along them.
+  const ROAD_SEGS = [
+    // Marina Blvd
+    [-138, 205, -48, 233], [-48, 233, 52, 247], [52, 247, 122, 237],
+    // Collyer Quay / Fullerton Rd down the west shore (inland of the seawall)
+    [-176, -85, -172, -45], [-172, -45, -172, 30], [-172, 30, -157, 110],
+    [-157, 110, -140, 182],
+    // Raffles Ave along the north shore
+    [-138, -222, -22, -218], [-22, -218, 88, -203], [88, -203, 152, -183],
+    // Bayfront Ave east of MBS
+    [188, -58, 196, 40], [196, 40, 190, 132],
+    // v16.2: Shenton Way through the CBD, Bras Basah past the civic
+    // district, and Nicoll Highway out toward Kallang
+    [-230, 195, -252, 80], [-252, 80, -258, -30], [-258, -30, -240, -85],
+    [-285, -135, -200, -222], [-200, -222, -148, -262],
+    [-95, -285, 30, -285], [30, -285, 160, -262], [160, -262, 268, -230]
+  ];
+  ROAD_SEGS.forEach(([x1, z1, x2, z2]) => addPath(x1, z1, x2, z2, 7, 0x686c70, 0.82));
   // Marina Blvd promenade along the south shore
   addPath(-130, 215, -40, 235, 5);
   addPath(-40, 235, 60, 248, 5);
@@ -3022,22 +3041,35 @@
   addPath(134, -50, 140, 20, 4);
   addPath(140, 20, 142, 90, 4);
 
-  function addTree(x, z, scale) {
-    scale = scale || 1;
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.4*scale, 0.5*scale, 3*scale, 5),
-      new THREE.MeshPhongMaterial({ color: 0x6a4a30 })
-    );
-    trunk.position.set(x, 1.5*scale + 0.6, z);
-    trunk.castShadow = true;
-    scene.add(trunk);
-    const leaves = new THREE.Mesh(
-      new THREE.SphereGeometry(2.2*scale, 6, 5),
-      new THREE.MeshPhongMaterial({ color: 0x4a7a3a })
-    );
-    leaves.position.set(x, 4*scale + 0.6, z);
-    leaves.castShadow = true;
-    scene.add(leaves);
+  // === v16.2: GARDEN CITY PLANTER ===
+  // Singapore plants trees the way other cities pour concrete. ALL trees in
+  // the world are two draw calls: one InstancedMesh of trunks, one of
+  // canopies, with per-instance colors picking the species (raintree greens
+  // plus a sprinkle of pink trumpet trees and golden flames). Spots come
+  // from five sources — the hand-picked anchors below, avenue rows along
+  // every road, park-cluster discs, linear shore strips, and a city-wide
+  // rejection-sampled scatter. Every candidate is land-checked against the
+  // real coast polygons and kept out of building footprints, so planting
+  // happens AFTER the world is placed (plantGardenCity() at the end of
+  // PLACE WORLD, once the colliders list is full).
+  function pointInPoly(px, pz, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+      if ((zi > pz) !== (zj > pz) && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+  const onLandPoint = (x, z) =>
+    pointInPoly(x, z, seaCoast) && !pointInPoly(x, z, reservoirHole);
+  // Fort Canning hill profile — trees planted on it ride the slope
+  const FORT_CANNING = { x: -380, z: -170, r: 62, h: 17 };
+  function groundY(x, z) {
+    const d = Math.hypot(x - FORT_CANNING.x, z - FORT_CANNING.z);
+    if (d >= FORT_CANNING.r) return 0;
+    return FORT_CANNING.h * Math.sqrt(1 - (d / FORT_CANNING.r) ** 2) * 0.95;
   }
   const treeSpots = [
     // Marina South / Gardens parkland (south shore)
@@ -3054,7 +3086,90 @@
     // inland NW
     [-350, -120, 1], [-330, -260, 1.1]
   ];
-  treeSpots.forEach(s => addTree(s[0], s[1], s[2]));
+  function plantGardenCity() {
+    const plan = [];
+    const clear = (x, z) => {
+      for (const c of colliders) {
+        if (Math.abs(x - c.x) < c.hx + 3 && Math.abs(z - c.z) < c.hz + 3) return false;
+      }
+      return true;
+    };
+    const tryPlant = (x, z, s) => {
+      if (onLandPoint(x, z) && clear(x, z)) plan.push([x, z, s]);
+    };
+    let rs = 11;
+    const rnd = () => { rs = (rs * 16807) % 2147483647; return rs / 2147483647; };
+    // 1) hand-picked anchors
+    treeSpots.forEach(t => tryPlant(t[0], t[1], t[2]));
+    // 2) avenue rows along every road, alternating sides
+    ROAD_SEGS.forEach(([x1, z1, x2, z2]) => {
+      const len = Math.hypot(x2 - x1, z2 - z1);
+      const n = Math.floor(len / 21);
+      const px = -(z2 - z1) / len, pz = (x2 - x1) / len;
+      for (let i = 1; i < n; i++) {
+        const t = i / n, side = i % 2 ? 6.5 : -6.5;
+        tryPlant(x1 + (x2 - x1) * t + px * side,
+                 z1 + (z2 - z1) * t + pz * side, 0.75 + rnd() * 0.3);
+      }
+    });
+    // 3) park clusters [cx, cz, radius, count]
+    const clusters = isMobilePerf
+      ? [[-140,-225,28,6],[300,165,85,20],[-380,-170,54,16],[330,-380,55,8]]
+      : [[-140,-225,28,11],   // Esplanade Park
+         [-185,-70,16,6],     // Merlion park
+         [300,165,85,42],     // Gardens by the Bay
+         [-380,-170,54,32],   // Fort Canning hill
+         [330,-380,55,16],    // Kallang riverside
+         [-198,-190,26,7],    // Padang fringe
+         [150,200,40,10]];    // Marina South park
+    clusters.forEach(([cx, cz, r, n]) => {
+      for (let i = 0; i < n; i++) {
+        const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r;
+        tryPlant(cx + Math.cos(a) * d, cz + Math.sin(a) * d, 0.8 + rnd() * 0.5);
+      }
+    });
+    // 4) shore strips [x1, z1, x2, z2, count]: Bay East Garden, East Coast
+    //    Park, the strait-facing south shore
+    [[458, -300, 470, 150, 22], [500, -355, 760, -395, 13], [-120, 430, 340, 390, 15]]
+      .forEach(([x1, z1, x2, z2, n]) => {
+        for (let i = 0; i <= n; i++) {
+          const t = i / n;
+          tryPlant(x1 + (x2 - x1) * t + (rnd() - 0.5) * 12,
+                   z1 + (z2 - z1) * t + (rnd() - 0.5) * 12, 0.8 + rnd() * 0.4);
+        }
+      });
+    // 5) city-wide scatter
+    const scatterN = isMobilePerf ? 60 : 150;
+    for (let i = 0; i < scatterN; i++) {
+      tryPlant(-520 + rnd() * 1040, -470 + rnd() * 950, 0.7 + rnd() * 0.6);
+    }
+    // two draw calls for the whole forest
+    const n = plan.length;
+    const trunkMesh = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.4, 0.55, 3, 5),
+      new THREE.MeshPhongMaterial({ color: 0x6a4a30 }), n);
+    const leafMesh = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(2.2, 6, 5),
+      new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 8 }), n);
+    const SPECIES = [0x4a7a3a, 0x55884a, 0x3f6f33, 0x5c8a3f, 0x4a7a3a,
+                     0x55884a, 0x3f6f33, 0x4a7a3a,
+                     0xd886b8, 0xd8a83a];   // pink trumpet, golden flame
+    const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(),
+          _p = new THREE.Vector3(), _s = new THREE.Vector3(),
+          _c = new THREE.Color();
+    plan.forEach(([x, z, s], i) => {
+      const y0 = groundY(x, z) + 0.5;
+      _s.set(s, s, s);
+      _p.set(x, y0 + 1.5 * s, z);
+      _m.compose(_p, _q, _s); trunkMesh.setMatrixAt(i, _m);
+      _p.set(x, y0 + 4 * s, z);
+      _m.compose(_p, _q, _s); leafMesh.setMatrixAt(i, _m);
+      leafMesh.setColorAt(i, _c.setHex(SPECIES[Math.floor(rnd() * SPECIES.length)]));
+    });
+    trunkMesh.castShadow = leafMesh.castShadow = true;
+    scene.add(trunkMesh);
+    scene.add(leafMesh);
+  }
 
   // === BOATS ===
   function buildFerry() {
@@ -3974,6 +4089,182 @@
     g.position.set(x, 0, z); return g;
   }
 
+  // === v16.2: DISTANT-LANDMARK SET ===
+  // The skyline ring that makes the city readable from anywhere on the lap.
+
+  // National Stadium (Sports Hub) — the white shallow dome with its arch,
+  // at the Kallang end of the basin, exactly where the real one sits.
+  function buildStadium(x, z) {
+    const g = new THREE.Group();
+    const shellMat = new THREE.MeshPhongMaterial({ color: 0xeef0ee, shininess: 60,
+      emissive: 0x222826, emissiveIntensity: 0.1 });
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), shellMat);
+    dome.scale.set(46, 21, 42);
+    dome.castShadow = true;
+    g.add(dome);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 7, 24),
+      new THREE.MeshPhongMaterial({ color: 0x5a5e62 }));
+    ring.scale.set(48, 1, 44);
+    ring.position.y = 3.5;
+    g.add(ring);
+    // the signature support arch over the top
+    const archGeo = new THREE.TorusGeometry(47, 1.4, 6, 24, Math.PI);
+    const arch = new THREE.Mesh(archGeo, new THREE.MeshPhongMaterial({
+      color: 0xfafafa, shininess: 70 }));
+    arch.scale.set(1, 0.52, 1);
+    g.add(arch);
+    g.position.set(x, 0, z); return g;
+  }
+
+  // Sultan Mosque — cream walls, the golden onion dome, two minarets.
+  function buildMosque(x, z) {
+    const g = new THREE.Group();
+    const wall = new THREE.MeshPhongMaterial({ color: 0xf2ecd8, shininess: 20 });
+    const gold = new THREE.MeshPhongMaterial({ color: 0xc9a23a, shininess: 110,
+      emissive: 0x584410, emissiveIntensity: 0.3 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(26, 13, 20), wall);
+    body.position.y = 6.5; body.castShadow = true; g.add(body);
+    const domeBase = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8.5, 4, 12), wall);
+    domeBase.position.y = 15; g.add(domeBase);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(7.5, 14, 10), gold);
+    dome.position.y = 21; dome.scale.y = 1.15; dome.castShadow = true; g.add(dome);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(1.2, 4, 6), gold);
+    tip.position.y = 30.5; g.add(tip);
+    for (const sx of [-1, 1]) {
+      const minaret = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.7, 26, 8), wall);
+      minaret.position.set(sx * 15.5, 13, 7);
+      minaret.castShadow = true; g.add(minaret);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 6), gold);
+      cap.position.set(sx * 15.5, 27, 7); g.add(cap);
+    }
+    g.position.set(x, 0, z); return g;
+  }
+
+  // Pinnacle@Duxton — seven slim towers strung together by two skybridges.
+  // Towers are built at WORLD coordinates (buildBuilding records its roof
+  // rect for the prop kit in world space), so the group stays at origin.
+  function buildPinnacle(x, z) {
+    const g = new THREE.Group();
+    const slabMat = new THREE.MeshPhongMaterial({ color: 0x9aa3ad, shininess: 30 });
+    for (let i = 0; i < 7; i++) {
+      // seed stride 20 pins every roll to 11 = plain roofs (the skybridges
+      // ARE the roofline), while the facade UV offsets still vary
+      g.add(buildBuilding(x + (i - 3) * 13, z, 9, 70, 9, 64 + i * 20,
+        hdbFacadeMats[i % 2]));
+    }
+    for (const y of [37, 69]) {
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(84, 2.2, 7), slabMat);
+      bridge.position.set(x, y, z);
+      bridge.castShadow = true;
+      g.add(bridge);
+    }
+    return g;
+  }
+
+  // Buddha Tooth Relic Temple — the red-and-gold tiered block in Chinatown.
+  function buildTemple(x, z) {
+    const g = new THREE.Group();
+    const red = new THREE.MeshPhongMaterial({ color: 0x8e2f24, shininess: 15 });
+    const gold = new THREE.MeshPhongMaterial({ color: 0xc9a23a, shininess: 80 });
+    const tiers = [[17, 6, 13], [13, 4.5, 10], [9, 3.5, 7]];
+    let y = 0;
+    tiers.forEach(([w, h, d]) => {
+      const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), red);
+      block.position.y = y + h / 2; block.castShadow = true; g.add(block);
+      y += h;
+      const eave = new THREE.Mesh(new THREE.BoxGeometry(w + 2.5, 0.7, d + 2.5), gold);
+      eave.position.y = y + 0.35; g.add(eave);
+      y += 0.7;
+    });
+    g.position.set(x, 0, z); return g;
+  }
+
+  // Raffles Hotel — low white colonial wings around a court (visual only).
+  function buildRafflesHotel(x, z) {
+    const g = new THREE.Group();
+    const white = new THREE.MeshPhongMaterial({ color: 0xf6f2e6, shininess: 25 });
+    const roof = new THREE.MeshPhongMaterial({ color: 0x7a8478 });
+    [[0, 0, 26, 9, 9], [-9, 12, 8, 8, 14], [9, 12, 8, 8, 14]].forEach(([dx, dz, w, h, d]) => {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), white);
+      wing.position.set(dx, h / 2, dz); wing.castShadow = true; g.add(wing);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 1.2, 0.7, d + 1.2), roof);
+      cap.position.set(dx, h + 0.35, dz); g.add(cap);
+    });
+    g.position.set(x, 0, z); return g;
+  }
+
+  // Fort Canning — the green mound behind the civic district. The planter
+  // reads groundY() so the hill comes out forested.
+  function buildFortCanning() {
+    const hill = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshPhongMaterial({ color: 0x5d8a4a, shininess: 4 }));
+    hill.scale.set(FORT_CANNING.r, FORT_CANNING.h, FORT_CANNING.r);
+    hill.position.set(FORT_CANNING.x, 0.4, FORT_CANNING.z);
+    hill.receiveShadow = true;
+    return hill;
+  }
+
+  // Tanjong Pagar port — a rank of gantry cranes + container stacks along
+  // the strait-facing coast. Nothing says Singapore from the air like them.
+  function buildPort(x, z) {
+    const g = new THREE.Group();
+    const craneMat = new THREE.MeshPhongMaterial({ color: 0xd8dde2, shininess: 30 });
+    const boomMat = new THREE.MeshPhongMaterial({ color: 0xc04438, shininess: 25 });
+    for (let i = 0; i < 4; i++) {
+      const cx = i * 30;
+      for (const lx of [-5, 5]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(1.6, 22, 1.6), craneMat);
+        leg.position.set(cx + lx, 11, 0); leg.castShadow = true; g.add(leg);
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(13, 1.8, 2.4), craneMat);
+      beam.position.set(cx, 22, 0); g.add(beam);
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 26), boomMat);
+      boom.position.set(cx, 23.5, 9);
+      boom.rotation.x = 0.18;
+      boom.castShadow = true; g.add(boom);
+    }
+    // container stacks in port colours
+    const boxColors = [0xc04438, 0x3a6ea8, 0x3f8a4f, 0xc78f2e];
+    for (let i = 0; i < 10; i++) {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(9, 2.6, 3.4),
+        new THREE.MeshPhongMaterial({ color: boxColors[i % 4], shininess: 20 }));
+      c.position.set(((i * 37) % 100) - 5, 1.3 + Math.floor(i / 5) * 2.6,
+                     -10 - (i % 3) * 5);
+      g.add(c);
+    }
+    g.position.set(x, 0, z); return g;
+  }
+
+  // The strait at anchor — cargo ships waiting off the coast, like every
+  // real photo of the Singapore horizon. Static, three meshes each.
+  function buildAnchoredShips() {
+    const g = new THREE.Group();
+    const hullMat = new THREE.MeshPhongMaterial({ color: 0x52404a, shininess: 20 });
+    const deckMat = new THREE.MeshPhongMaterial({ color: 0xb04a3a, shininess: 15 });
+    const castleMat = new THREE.MeshPhongMaterial({ color: 0xe8e8e2, shininess: 40 });
+    const spots = [
+      [180, 560, 0.4], [420, 545, 2.6], [-150, 585, 1.2], [40, 640, 5.5],
+      [-420, 610, 0.9], [300, 690, 4.1], [660, -360, 2.2], [800, -420, 0.7],
+      [580, -330, 3.6]
+    ];
+    (isMobilePerf ? spots.slice(0, 5) : spots).forEach(([x, z, rot], i) => {
+      const ship = new THREE.Group();
+      const len = 26 + (i % 3) * 9;
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(len, 3.2, 7), hullMat);
+      hull.position.y = 1.2; ship.add(hull);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(len * 0.62, 2.2, 5.6), deckMat);
+      deck.position.set(-len * 0.08, 3.6, 0); ship.add(deck);
+      const castle = new THREE.Mesh(new THREE.BoxGeometry(4.5, 5, 6), castleMat);
+      castle.position.set(len * 0.36, 4.8, 0); ship.add(castle);
+      ship.rotation.y = rot;
+      ship.position.set(x, 0, z);
+      g.add(ship);
+    });
+    return g;
+  }
+
   function buildHDB(x, z) {
     // C1: each block is now a single box with the shared HDB facade sheet —
     // the old per-floor band loop (~55 meshes per estate) and the one-off
@@ -4110,6 +4401,49 @@
   });
   // Plain beacon tip on T2 (no mast — keeps the skyline tip set tidy)
   warnBeaconTips.push([-215, 73.5, 315]);
+
+  // === v16.2: GARDEN CITY RING — recognizable landmarks at distance ===
+  // National Stadium at the Kallang end of the basin (its real spot)
+  scene.add(buildStadium(345, -435));     addCollider(345, -435, 52, 48, 32);
+  // Swissôtel Stamford — the tall twin slab right behind the Padang.
+  // Seeds 13/33 both roll plain roofs; lateral distance to the P13-P14
+  // legs stays >47 beyond full drift (sim-verified).
+  [[-247, -183, 102, 13], [-237, -195, 96, 33]].forEach(([x, z, h, seed], i) => {
+    const b = buildBuilding(x, z, 13, h, 13, seed, cbdFacadeMats[(i + 5) % cbdFacadeMats.length]);
+    scene.add(b);
+    addCollider(x, z, 9.5, 9.5, b.userData.totalH + 2);
+  });
+  warnBeaconTips.push([-247, 104.5, -183]);
+  // Sultan Mosque in Kampong Glam, north of the Bugis blocks
+  scene.add(buildMosque(-60, -405));      addCollider(-60, -405, 16, 13, 33);
+  // Pinnacle@Duxton on the SW skyline + Chinatown at its feet
+  scene.add(buildPinnacle(-420, 330));    addCollider(-420, 330, 49, 8, 74);
+  scene.add(buildTemple(-352, 252));      addCollider(-352, 252, 11, 9, 17);
+  scene.add(buildShophouseRow(-400, 212, 10, 0));
+  scene.add(buildShophouseRow(-400, 240, 10, 0));
+  scene.add(buildShophouseRow(-398, 268, 9, 0));
+  // Raffles Hotel between the civic district and Kampong Glam
+  scene.add(buildRafflesHotel(-145, -285));
+  // Fort Canning hill (the planter forests it via groundY)
+  scene.add(buildFortCanning());
+  // Orchard-ish tower cluster on the NW horizon
+  const orchard = [[-580,-260,78],[-552,-300,92],[-528,-252,66],[-600,-312,72],
+                   [-560,-352,84],[-522,-322,60]];
+  orchard.forEach(([x, z, h], i) => {
+    const b = buildBuilding(x, z, 24, h, 22, 91 + i * 7,
+      cbdFacadeMats[(i + 1) % cbdFacadeMats.length], i === 1);
+    scene.add(b);
+    addCollider(x, z, 15, 14, b.userData.totalH + 2);
+  });
+  // Heartland estates ringing the core
+  scene.add(buildHDB(-480, -120));        addCollider(-480, -120, 30, 30, 48);
+  scene.add(buildHDB(-495, 265));         addCollider(-495, 265, 30, 30, 48);
+  scene.add(buildHDB(200, -425));         addCollider(200, -425, 30, 30, 48);
+  // Tanjong Pagar port cranes on the strait coast + ships at anchor
+  scene.add(buildPort(-470, 438));
+  scene.add(buildAnchoredShips());
+  // …and the trees. Two draw calls, after every collider is registered.
+  plantGardenCity();
 
   // === C3: ROOFTOP PROP KIT ===
   // One InstancedMesh of grey boxes scattered over every roof rect collected
