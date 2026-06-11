@@ -131,8 +131,9 @@ The whole match state is encoded in the URL itself — a uint32 seed plus level 
 Fly Again after losing a challenge replays the *same* questions for an immediate rematch.
 
 ### 🌆 Cinematic Marina Bay World
-- Stylised Singapore skyline rebuilt from the real map at 1:2 scale (v16), with true compass orientation: the **CBD** behind Collyer Quay on the west shore, the **Merlion** at the Singapore River mouth (a bumboat cruises the river) with the **Fullerton Hotel** next door, the **Esplanade**, **the Float (NS Square)**, **Suntec** and the rotating **Singapore Flyer** along the north, and **ArtScience, MBS and the Supertree Grove** down the east shore — **MBFC towers** at the south-west corner
-- The **Helix Bridge** spans the bay's NE mouth on its real N–S axis with traffic crossing into the Kallang basin, and **Bay East Garden** lies across the water as a green island
+- A continuous open-world Singapore rebuilt from the real map at 1:2 scale (v16) with true compass orientation — the water (bay, **Singapore River**, **Kallang basin**, the open strait) is carved out of one urban landmass, sealed by the **Marina Barrage**
+- The **CBD** behind Collyer Quay on the west shore, the **Merlion** at the river mouth (a bumboat cruises past the pastel **Boat Quay shophouses**) with the **Fullerton Hotel** next door, the **Padang** and colonial civic blocks, the **Esplanade**, **the Float (NS Square)**, **Suntec's five towers around the Fountain of Wealth** and the rotating **Singapore Flyer** along the north, and **ArtScience, MBS, the Gardens domes and the Supertree Grove** down the east shore — **MBFC towers** at the south-west corner
+- The **Helix Bridge** spans the bay's NE mouth on its real N–S axis, and the **Benjamin Sheares viaduct** strides the basin with its own headlight stream — **Bay East Garden** is the green peninsula beyond
 - **NS Square / the Float** juts south off the north shore, platform over the water — the fireworks anchor site
 - **Lit window facades** across the whole skyline (shared materials, so it's cheap)
 - Rooftop props and blinking **aircraft-warning beacons** on the tall towers
