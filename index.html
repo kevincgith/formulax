@@ -2072,7 +2072,7 @@
   }
 
   /* === v12: GLOWING TIME-OF-DAY CONTROLS WHEN SUNSET IS UNLOCKED-BUT-UNUSED === */
-  body.sunset-pending #btn-time {
+  body.sunset-pending .time-btn {
     border-color: #ffd966 !important;
     color: #ffe9aa;
     animation: btnUnlockGlow 1.7s ease-in-out infinite;
@@ -2130,14 +2130,17 @@
     <span class="key">C</span>: auto-center <span id="ic-center" class="state">ON</span><br>
     <span class="key">M</span>: sound <span id="ic-sound" class="state">ON</span><br>
     <span class="key">T</span>: time <span id="ic-time" class="state">DAY</span><br>
-    <span class="key">S</span>: speed <span id="ic-speed" class="state off">OFF</span><br>
+    <span class="key">X</span>: speed <span id="ic-speed" class="state off">OFF</span><br>
     <span class="key">Z</span>: ZOOOM<br>
     <span class="key">ESC</span>: menu
   </div>
 
-  <!-- v15 Part B: in-flight column slimmed 6 → 3. Sound / auto-center / time
-       are set-and-forget — they moved into the pause card. -->
+  <!-- v15 Part B: in-flight column slimmed (sound / auto-center moved to the
+       pause card). v18: day/sunset toggle lives on the HUD too — it's a quick
+       in-flight mood switch, not a set-and-forget. Shares the .time-btn class
+       with the pause-card button so both icons update together. -->
   <div id="icon-settings">
+    <button class="icon-btn time-btn" id="btn-time-hud" title="Toggle day / sunset">☀</button>
     <button class="icon-btn" id="btn-speed"    title="Toggle Speed Mode (50% faster)">⚡</button>
     <button class="icon-btn" id="btn-controls" title="Switch controls">🕹</button>
     <button class="icon-btn" id="btn-pause"    title="Pause">⏸</button>
@@ -2303,7 +2306,7 @@
       <div class="pause-toggles">
         <button class="icon-btn" id="btn-sound"  title="Toggle sound">🔊</button>
         <button class="icon-btn" id="btn-center" title="Toggle auto-center">⊕</button>
-        <button class="icon-btn" id="btn-time"   title="Toggle day / sunset">☀</button>
+        <button class="icon-btn time-btn" id="btn-time" title="Toggle day / sunset">☀</button>
       </div>
       <button class="diff-btn" id="pause-resume">Resume</button>
       <button class="diff-btn btn-secondary" id="pause-restart">Restart</button>
@@ -2544,12 +2547,14 @@
       }
       const bs = document.getElementById('btn-sound');
       const bc = document.getElementById('btn-center');
-      const bt = document.getElementById('btn-time');
       const bsp = document.getElementById('btn-speed');
       bs.textContent = this.sound ? '🔊' : '🔇';
       bs.classList.toggle('off', !this.sound);
       bc.classList.toggle('off', !this.autoCenter);
-      bt.textContent = this.timeOfDay === 'sunset' ? '🌅' : '☀';
+      // v18: both day/sunset buttons (HUD + pause card) share .time-btn
+      document.querySelectorAll('.time-btn').forEach(b => {
+        b.textContent = this.timeOfDay === 'sunset' ? '🌅' : '☀';
+      });
       if (bsp) {
         bsp.textContent = SPEED_MODE_ICONS[this.speedMode] || '⚡';
         bsp.classList.toggle('on', this.speedMode > 0);
@@ -6442,7 +6447,7 @@
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyC') toggleCenter();
     if (e.code === 'KeyT') toggleTime();
-    if (e.code === 'KeyS') { e.preventDefault(); toggleSpeedMode(); }
+    if (e.code === 'KeyX') toggleSpeedMode();
     if (e.code === 'KeyZ') {
       // v13: ZOOOM. Click handler covers mobile; this gives desktop a shortcut.
       e.preventDefault();
@@ -6636,6 +6641,7 @@
   document.getElementById('btn-sound').addEventListener('click', toggleSound);
   document.getElementById('btn-center').addEventListener('click', toggleCenter);
   document.getElementById('btn-time').addEventListener('click', toggleTime);
+  document.getElementById('btn-time-hud').addEventListener('click', toggleTime);
   document.getElementById('btn-speed').addEventListener('click', toggleSpeedMode);
   document.getElementById('btn-controls').addEventListener('click', toggleControlStyle);
   document.getElementById('btn-pause').addEventListener('click', openPauseOverlay);
