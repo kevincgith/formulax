@@ -648,6 +648,29 @@
     text-shadow: 0 2px 8px rgba(0, 100, 140, 0.6);
     white-space: nowrap;
   }
+  /* Tiny-mode concrete counting strip under the equation. */
+  #q-count {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: clamp(6px, 1.5vw, 12px);
+    margin-top: clamp(6px, 1.4vh, 12px);
+    font-size: clamp(16px, 3.6vw, 26px);
+    line-height: 1.1;
+  }
+  #q-count .cg {
+    display: inline-block;
+    padding: 2px clamp(6px, 1.4vw, 10px);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    letter-spacing: 1px;
+  }
+  #q-count .cg-op {
+    font-weight: 800;
+    color: #ffd24d;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
 
   /* === v13: ZOOOM BAR ===
      Charges by 1 per correct answer; threshold varies by difficulty.
@@ -2115,7 +2138,7 @@
     <div class="zoom-text">ZOOOM</div>
   </div>
 
-  <div id="question-bar"><div id="q-text">Loading…</div></div>
+  <div id="question-bar"><div id="q-text">Loading…</div><div id="q-count" aria-hidden="true"></div></div>
 
   <!-- v15 Part B: kids need two numbers, not five. Flow surfaces as a gold
        badge only once the multiplier kicks in (×2+). Streak/Best removed —
@@ -2123,6 +2146,9 @@
   <div id="stats">
     <div class="stat-row"><span class="stat-label">Lives</span> <span class="stat-value lives hi" id="lives">♥ 10</span></div>
     <div class="stat-row"><span class="stat-label">Score</span> <span class="stat-value" id="score">0</span></div>
+    <!-- Tiny mode swaps the Flow badge for a plain Streak count — the gentlest,
+         most legible "how many in a row" for the youngest players. -->
+    <div class="stat-row" id="streak-row" style="display:none"><span class="stat-label">Streak</span> <span class="stat-value" id="streak">0</span></div>
     <div id="flow-badge">FLOW ×2</div>
   </div>
 
@@ -5336,7 +5362,7 @@
     level: 1, levelName: 'Tiny',
     lives: START_LIVES, score: 0, streak: 0, bestStreak: 0, totalCorrect: 0,
     question: null, answered: false, questionCooldown: 0, invuln: 0,
-    flowMult: 1, bestScore: 0,
+    flowMult: 1, bestScore: 0, missionWon: false,
     slowmo: 0, slowmoMax: 0.9,
     shake: 0, shakeIntensity: 0,
     paused: false,  // true while crash-confirm modal is open
@@ -5373,6 +5399,11 @@
   // v13: per-difficulty ZOOOM thresholds (correct answers needed to fill bar).
   const ZOOM_THRESHOLDS = { 1: 5, 2: 7, 3: 10, 4: 10 };
   const ZOOM_SPEED_MULT = 2.2;
+  // Tiny is a short, finishable MISSION rather than an endless run: a wrong
+  // answer never ends it (you just count it out and carry on), and reaching
+  // this many correct answers wins the flight with a celebration — giving the
+  // youngest a clear "you did it" finish and a healthy stopping point.
+  const TINY_MISSION_GOAL = 10;
   // Part A (v15): Singlish streak cheers — the headline ladder for every
   // 5th-streak WOW. Escalates to 25 then cycles. All positive, kid-safe lah.
   const SINGLISH_PHRASES = ['SHIOK!', 'STEADY LAH!', 'POWER LAH!', 'WAH, SO ZAI!', 'HUAT AH!'];
@@ -6432,9 +6463,17 @@
     else if (s >= 5) game.flowMult = 3;
     else if (s >= 3) game.flowMult = 2;
     else game.flowMult = 1;
-    let speed = SPEEDS[game.level] * (1 + (game.flowMult - 1) * 0.08);
-    // v13.1: Speed Mode is a tier (Off / Fast 1.5× / Faster 1.85×).
-    speed *= SPEED_MODE_MULTS[Settings.speedMode] || 1;
+    let speed;
+    if (game.level === 1) {
+      // Tiny: flat pace, always. A streak's reward is cosmetic (planes, cheers,
+      // mission progress) — never less time to count, which only pushes the
+      // youngest into guessing. Flow/Speed-Mode multipliers don't apply here.
+      speed = SPEEDS[1];
+    } else {
+      speed = SPEEDS[game.level] * (1 + (game.flowMult - 1) * 0.08);
+      // v13.1: Speed Mode is a tier (Off / Fast 1.5× / Faster 1.85×).
+      speed *= SPEED_MODE_MULTS[Settings.speedMode] || 1;
+    }
     // v13: ZOOOM bumps speed 2.2× during the cinematic lap (stacks on top).
     if (game.zoomActive) speed *= ZOOM_SPEED_MULT;
     game.speed = speed;
@@ -6656,7 +6695,80 @@
   // questionRng from that earlier block.
   const randInt  = (lo, hi) => lo + Math.floor(questionRng() * (hi - lo + 1));
   const shuffle  = arr => arr.slice().sort(() => questionRng() - 0.5);
+  // Pedagogically-chosen distractors: every wrong gate mirrors a real mistake
+  // a child makes (miscounted by one, added/subtracted instead, wrote both
+  // digits, one skip-count too few/many on times tables), so even rejecting a
+  // wrong answer teaches. Uses the seeded RNG only, so URL-challenge flights
+  // stay identical for both players. Falls back to near-miss fillers when a
+  // question yields fewer than two distinct pedagogical candidates.
+  function buildDistractors(a, b, op, answer) {
+    const cands = [];
+    const push = v => { if (Number.isFinite(v) && v >= 0 && v !== answer) cands.push(v); };
+    if (op === '+') {
+      push(answer - 1); push(answer + 1);            // miscounted by one
+      push(Math.max(a, b));                          // forgot to add the other group
+      push(Math.abs(a - b));                         // subtracted instead of adding
+      if (a < 10 && b < 10) push(parseInt(`${a}${b}`, 10)); // wrote both digits
+    } else if (op === '−') {
+      push(answer - 1); push(answer + 1);            // miscount / borrow slip
+      push(a + b);                                   // added instead of subtracting
+      push(b);                                       // grabbed a number on the page
+      push(answer + 10); push(answer - 10);          // borrow / place-value error
+    } else { // ×
+      push(answer - a); push(answer + a);            // one group too few / too many
+      push(answer - b); push(answer + b);
+      push(a + b);                                   // added instead of multiplying
+      push(answer - 1); push(answer + 1);
+    }
+    const seen = new Set([answer]);
+    const uniq = [];
+    for (const v of cands) if (!seen.has(v)) { seen.add(v); uniq.push(v); }
+    const out = shuffle(uniq).slice(0, 2);
+    out.forEach(v => seen.add(v));
+    let guard = 0;
+    while (out.length < 2 && guard++ < 40) {
+      const spread = Math.max(2, Math.ceil(Math.abs(answer) * 0.3));
+      const w = answer + (questionRng() < 0.5 ? -1 : 1) * randInt(1, spread);
+      if (w >= 0 && !seen.has(w)) { seen.add(w); out.push(w); }
+    }
+    return out;
+  }
+
+  // Adaptive review — SOLO play only. Challenge flights are seed-deterministic
+  // and must never read or write this queue (both players would diverge), so
+  // every touchpoint is guarded by !game.activeChallenge. A missed fact is
+  // re-queued to resurface a few questions later; answering it right on the
+  // resurface clears it. Flight-scoped: reset at every startGame.
+  let reviewQueue = [];
+  function rememberMissedFact(q) {
+    if (!q || !q.factKey) return;
+    const f = reviewQueue.find(x => x.key === q.factKey);
+    if (f) { f.dueIn = 2; f.misses++; }
+    else reviewQueue.push({ key: q.factKey, a: q.a, b: q.b, op: q.op, answer: q.answer, dueIn: 2, misses: 1 });
+    if (reviewQueue.length > 8) reviewQueue.shift();
+  }
+  function resolveReviewFact(q) {
+    if (!q || !q.isReview) return;
+    const i = reviewQueue.findIndex(x => x.key === q.factKey);
+    if (i >= 0) reviewQueue.splice(i, 1);
+  }
+  function dueReviewFact() {
+    let pick = null;
+    for (const f of reviewQueue) { f.dueIn--; if (f.dueIn <= 0 && !pick) pick = f; }
+    return pick;
+  }
+
   function generateQuestion() {
+    // Resurface a recently-missed fact when one is due (solo play only).
+    if (!game.activeChallenge && reviewQueue.length) {
+      const f = dueReviewFact();
+      if (f) {
+        const opts = buildDistractors(f.a, f.b, f.op, f.answer);
+        return { text: `${f.a} ${f.op} ${f.b} = ?`, answer: f.answer,
+                 options: shuffle([f.answer, ...opts]),
+                 a: f.a, b: f.b, op: f.op, factKey: f.key, isReview: true };
+      }
+    }
     const lvl = game.level;
     let a, b, op, answer;
     if (lvl === 1) {
@@ -6672,15 +6784,9 @@
       else if (r < 0.7) { a = randInt(15, 50); b = randInt(1, a); op = '−'; answer = a - b; }
       else { a = randInt(2, 12); b = randInt(2, 10); op = '×'; answer = a * b; }
     }
-    const wrongs = new Set();
-    let attempts = 0;
-    while (wrongs.size < 2 && attempts++ < 30) {
-      const spread = Math.max(2, Math.ceil(Math.abs(answer) * 0.3));
-      const delta = (questionRng() < 0.5 ? -1 : 1) * randInt(1, spread);
-      const w = answer + delta;
-      if (w !== answer && w >= 0) wrongs.add(w);
-    }
-    return { text: `${a} ${op} ${b} = ?`, answer, options: shuffle([answer, ...wrongs]) };
+    return { text: `${a} ${op} ${b} = ?`, answer, a, b, op,
+             factKey: `${a}${op}${b}`,
+             options: shuffle([answer, ...buildDistractors(a, b, op, answer)]) };
   }
 
   // === GATES ===
@@ -6931,7 +7037,25 @@
     clearGates();
     game.question = generateQuestion();
     document.getElementById('q-text').textContent = game.question.text;
+    renderCountHelper(game.question);
     spawnGatesAhead();
+  }
+
+  // Concrete counting aid under the equation — Tiny mode only (level 1 is
+  // always single-digit addition). Two groups of countable chicks a pre-reader
+  // can tally when the fact isn't yet memorised (Singapore-math concrete →
+  // pictorial → abstract). Hidden on every other level and operation.
+  function renderCountHelper(q) {
+    const el = document.getElementById('q-count');
+    if (!el) return;
+    if (game.level === 1 && q && q.op === '+' && q.a + q.b <= 12) {
+      const grp = n => `<span class="cg">${'🐥'.repeat(n)}</span>`;
+      el.innerHTML = `${grp(q.a)}<span class="cg-op">+</span>${grp(q.b)}`;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+      el.innerHTML = '';
+    }
   }
 
   function flashCorrect() {
@@ -6996,6 +7120,8 @@
       game.streak += 1;
       game.totalCorrect += 1;
       game.bestStreak = Math.max(game.bestStreak, game.streak);
+      // Adaptive: a resurfaced fact answered right is mastered — clear it.
+      resolveReviewFact(game.question);
       updateFlow();
 
       // Plane tier upgrade — fires after streak update.
@@ -7082,17 +7208,38 @@
       }
       if (game.level === 2 && game.totalCorrect === 10) levelUp(3);
       else if (game.level === 3 && game.totalCorrect === 25) levelUp(4);
+      // Tiny mission complete — finishable "you did it" finish for the youngest.
+      if (game.level === 1 && game.totalCorrect >= TINY_MISSION_GOAL && !game.missionWon) {
+        updateHUD();
+        winTinyMission();
+        return;
+      }
     } else {
       game.streak = 0;
-      game.lives -= 1;
       updateFlow();
-      showFeedback(game.level === 1 ? 'TRY AGAIN!' : 'NOT QUITE',
-                   `−1 life · answer was ${game.question.answer}`, 'wrong');
+      // Learning beat (all levels): light up the gate that WAS correct so the
+      // miss becomes the most teachable second in the game, not just a penalty.
+      const gates = game.question && game.question.gates;
+      if (gates) {
+        const correctGate = gates.find(g => g.userData.value === game.question.answer);
+        if (correctGate) flashGate(correctGate, 0x44ff99);
+      }
       flashGate(picked, 0xff6677);
       flashHit();
       Sound.wrong();
-      triggerCameraShake(0.9, 0.30);
-      if (game.lives <= 0) { updateHUD(); gameOver(); return; }
+      // Adaptive: remember the missed fact to resurface later (solo play only).
+      if (!game.activeChallenge) rememberMissedFact(game.question);
+      if (game.level === 1) {
+        // Tiny is forgiving: a wrong answer costs no life and never ends the
+        // mission. Count it out together and fly on.
+        triggerCameraShake(0.5, 0.22);
+        showFeedback('LET\'S COUNT!', `the answer is ${game.question.answer}`, 'wrong');
+      } else {
+        game.lives -= 1;
+        triggerCameraShake(0.9, 0.30);
+        showFeedback('NOT QUITE', `−1 life · answer was ${game.question.answer}`, 'wrong');
+        if (game.lives <= 0) { updateHUD(); gameOver(); return; }
+      }
     }
     updateHUD();
     game.questionCooldown = correct ? 0.9 : 1.6;
@@ -7101,6 +7248,31 @@
     if (game.zoomPending && game.zoomCharge >= 1 && game.lives > 0) {
       setTimeout(() => { if (game.state === 'playing') activateZoom(); }, 350);
     }
+  }
+
+  // Tiny mission win — a real, celebrated finish line. Clears the gates, keeps
+  // the plane flying through a short firework celebration, then drops to the
+  // results screen reframed as a victory (see gameOver's `won` path).
+  function winTinyMission() {
+    if (game.state !== 'playing') return;
+    game.missionWon = true;
+    clearGates();
+    game.question = null;
+    game.answered = true;
+    game.questionCooldown = 999;  // hold off newQuestion through the fly-out
+    game.invuln = 2.2;            // no accidental crash during the fly-out
+    game.zoomPending = false;
+    Sound.bonus();
+    setTimeout(() => Sound.levelUp(), 220);
+    showFeedback('🎉 MISSION COMPLETE!', `${TINY_MISSION_GOAL} correct — you did it!`, 'bonus');
+    if (typeof launchFirework === 'function' && FW_SITES.length) {
+      const at = i => FW_SITES[Math.min(i, FW_SITES.length - 1)];
+      launchFirework(at(0), 2);
+      setTimeout(() => launchFirework(at(1), 1.6), 350);
+      setTimeout(() => launchFirework(at(2), 1.6), 700);
+      setTimeout(() => launchFirework(at(0), 1.8), 1050);
+    }
+    setTimeout(() => { if (game.state === 'playing') gameOver(true); }, 2000);
   }
 
   function levelUp(newLvl) {
@@ -7161,10 +7333,18 @@
     document.getElementById('score').textContent = game.score;
     // v15 Part B: Streak/Best rows left the HUD. Flow is a gold badge that
     // only appears once the multiplier kicks in (×2+).
+    // Tiny mode declutters: a plain Streak count replaces the Flow badge, since
+    // Flow's speed multiplier doesn't apply at this level anyway.
+    const isTiny = game.level === 1;
+    const streakRow = document.getElementById('streak-row');
+    if (streakRow) {
+      streakRow.style.display = isTiny ? '' : 'none';
+      if (isTiny) document.getElementById('streak').textContent = game.streak;
+    }
     const flowEl = document.getElementById('flow-badge');
     if (flowEl) {
       flowEl.textContent = `FLOW ×${game.flowMult}`;
-      flowEl.className =
+      flowEl.className = isTiny ? '' :
         (game.flowMult >= 4 ? 'show tier4' :
          game.flowMult >= 3 ? 'show tier3' :
          game.flowMult >= 2 ? 'show' : '');
@@ -7209,6 +7389,8 @@
     game.lives = START_LIVES;
     game.score = 0; game.streak = 0; game.bestStreak = 0; game.totalCorrect = 0;
     game.invuln = 0; game.pathT = 0;
+    game.missionWon = false;     // Tiny mission win flag (reset each flight)
+    reviewQueue = [];            // adaptive resurfacing is flight-scoped
     // v18: every flight starts the lap-variation sequence from the top
     varReset(); rebuildVarTube();
     game.slowmo = 0; game.shake = 0;
@@ -7249,9 +7431,13 @@
   }
   window.startGame = startGame;
 
-  function gameOver() {
+  function gameOver(won) {
     maybeUpdateBest();
     const wasNewBest = (game.score > 0 && game.score === game.bestScore);
+    // Reframe the results screen as a celebration when a Tiny mission was won,
+    // rather than the default "flight over" framing.
+    const goHead = document.querySelector('#gameover h2');
+    if (goHead) goHead.textContent = won ? '🎉 MISSION COMPLETE!' : 'FLIGHT OVER';
     game.state = 'gameover';
     game.zoomActive = false;  // v13: clean up any active ZOOOM
     game.zoomCharge = 0;

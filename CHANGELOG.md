@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v19] — 2026-06-13
+
+**Tiny mode grows up as a learning tool, and every wrong gate now teaches.**
+
+A pass focused on the youngest learners and on making mistakes instructive rather than just costly.
+
+### Added
+- **Pedagogical distractors (all levels)** — wrong answer gates are no longer random near-misses. Each now mirrors a real childhood mistake: miscounted by one, added-instead-of-subtracted (or vice-versa), wrote both digits (`2+3 → 23`), or one skip-count too few/many on times tables (`8×7 → 48 / 63`). Rejecting a wrong answer is now itself a tiny lesson. Falls back to near-miss fillers only when a fact yields too few natural candidates.
+- **Tiny is a finishable mission** — instead of an endless run, Tiny is now a short mission: reach **10 correct** to win the flight with a firework celebration and a "🎉 MISSION COMPLETE!" results screen. Gives the youngest a clear "you did it" finish and a healthy stopping point.
+- **Concrete counting aid (Tiny only)** — two groups of countable chicks (🐥🐥 + 🐥) render under the equation so a pre-reader can solve by counting, not by recall (Singapore-math concrete → pictorial → abstract).
+- **Learning beat on every miss (all levels)** — a wrong answer now lights up the gate that *was* correct in green, turning the mistake into the most teachable second in the game.
+- **Adaptive review (solo play)** — a missed fact is quietly re-queued to resurface a few questions later; getting it right on the resurface clears it. Flight-scoped and **disabled in challenge mode**, so head-to-head links stay perfectly deterministic.
+- **Tiny streak readout** — Tiny swaps the Flow badge for a plain **Streak** count, the clearest "how many in a row" for little ones.
+
+### Changed
+- **Tiny is forgiving** — a wrong answer in Tiny costs **no life** and never ends the mission; you just count it out and fly on. (Other levels are unchanged.)
+- **Tiny holds a flat pace** — Flow and Speed-Mode multipliers no longer speed Tiny up. A streak's reward stays cosmetic (planes, cheers, mission progress) and never shortens the time a young child has to think.
+
+### Verified
+- Challenge determinism re-confirmed: identical seeds produce identical question *and* option sequences across all four levels; every question always renders exactly three unique gates including the correct answer.
+
+---
+
 ## [v18] — 2026-06-11
 
 **Coins charge the ZOOOM bar, and no two laps fly the same.**
