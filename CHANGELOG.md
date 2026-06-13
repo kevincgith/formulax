@@ -17,10 +17,10 @@ A pass focused on the youngest learners and on making mistakes instructive rathe
 - **Concrete counting aid (Tiny only)** — two groups of countable chicks (🐥🐥 + 🐥) render under the equation so a pre-reader can solve by counting, not by recall (Singapore-math concrete → pictorial → abstract).
 - **Learning beat on every miss (all levels)** — a wrong answer now lights up the gate that *was* correct in green, turning the mistake into the most teachable second in the game.
 - **Adaptive review (solo play)** — a missed fact is quietly re-queued to resurface a few questions later; getting it right on the resurface clears it. Flight-scoped and **disabled in challenge mode**, so head-to-head links stay perfectly deterministic.
-- **Tiny streak readout** — Tiny swaps the Flow badge for a plain **Streak** count, the clearest "how many in a row" for little ones.
+- **Tiny readout, decluttered** — Tiny drops the Lives row and Flow badge for a plain **Streak** count and the **Top Score**, the clearest, lowest-pressure HUD for little ones.
 
 ### Changed
-- **Tiny is forgiving** — a wrong answer in Tiny costs **no life** and never ends the mission; you just count it out and fly on. (Other levels are unchanged.)
+- **Tiny is forgiving and crash-proof** — Tiny has **no lives**: a wrong answer just counts it out and flies on, and flying into a building is a harmless wobble back to center. Nothing ends the flight but reaching the mission goal. (Other levels are unchanged.)
 - **Tiny holds a flat pace** — Flow and Speed-Mode multipliers no longer speed Tiny up. A streak's reward stays cosmetic (planes, cheers, mission progress) and never shortens the time a young child has to think.
 
 ### Verified

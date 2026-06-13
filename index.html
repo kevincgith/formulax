@@ -2144,11 +2144,12 @@
        badge only once the multiplier kicks in (×2+). Streak/Best removed —
        updateHUD no longer writes to them. -->
   <div id="stats">
-    <div class="stat-row"><span class="stat-label">Lives</span> <span class="stat-value lives hi" id="lives">♥ 10</span></div>
+    <div class="stat-row" id="lives-row"><span class="stat-label">Lives</span> <span class="stat-value lives hi" id="lives">♥ 10</span></div>
     <div class="stat-row"><span class="stat-label">Score</span> <span class="stat-value" id="score">0</span></div>
-    <!-- Tiny mode swaps the Flow badge for a plain Streak count — the gentlest,
-         most legible "how many in a row" for the youngest players. -->
+    <!-- Tiny mode has no lives (it's a crash-proof learning mission): it swaps
+         the Lives row + Flow badge for a plain Streak count and the Top Score. -->
     <div class="stat-row" id="streak-row" style="display:none"><span class="stat-label">Streak</span> <span class="stat-value" id="streak">0</span></div>
+    <div class="stat-row" id="best-row" style="display:none"><span class="stat-label">Top Score</span> <span class="stat-value" id="best">0</span></div>
     <div id="flow-badge">FLOW ×2</div>
   </div>
 
@@ -7295,6 +7296,18 @@
   }
 
   function onBuildingHit() {
+    if (game.level === 1) {
+      // Tiny is fully crash-proof: a bump just nudges you back to center with a
+      // gentle wobble — no life lost, no lost streak, no game over.
+      game.invuln = 1.2;
+      Sound.hit();
+      flashHit();
+      triggerCameraShake(1.0, 0.35);
+      showFeedback('OOPS!', 'careful — fly through the rings!', 'wrong');
+      game.offset.x = 0; game.offset.y = 0;
+      game.offsetVel.x = 0; game.offsetVel.y = 0;
+      return;
+    }
     game.lives -= 1;
     game.streak = 0;
     updateFlow();
@@ -7333,13 +7346,21 @@
     document.getElementById('score').textContent = game.score;
     // v15 Part B: Streak/Best rows left the HUD. Flow is a gold badge that
     // only appears once the multiplier kicks in (×2+).
-    // Tiny mode declutters: a plain Streak count replaces the Flow badge, since
-    // Flow's speed multiplier doesn't apply at this level anyway.
+    // Tiny mode declutters: it's a crash-proof mission with no lives, so it
+    // hides the Lives row and shows a plain Streak count + the Top Score
+    // instead of the Flow badge (Flow's speed multiplier doesn't apply here).
     const isTiny = game.level === 1;
+    const livesRow = document.getElementById('lives-row');
+    if (livesRow) livesRow.style.display = isTiny ? 'none' : '';
     const streakRow = document.getElementById('streak-row');
     if (streakRow) {
       streakRow.style.display = isTiny ? '' : 'none';
       if (isTiny) document.getElementById('streak').textContent = game.streak;
+    }
+    const bestRow = document.getElementById('best-row');
+    if (bestRow) {
+      bestRow.style.display = isTiny ? '' : 'none';
+      if (isTiny) document.getElementById('best').textContent = game.bestScore;
     }
     const flowEl = document.getElementById('flow-badge');
     if (flowEl) {
