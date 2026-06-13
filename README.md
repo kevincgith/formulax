@@ -70,13 +70,25 @@ The result became:
 
 ### ✈️ Arcade Flight Gameplay
 - Fly through the correct answer gates
-- Wrong answers or collisions cost lives
+- Wrong answers or collisions cost lives (Tiny mode is forgiving — see below)
 - Fast restart loop designed for "one more run"
 
 ### 🔥 Flow System
 - Consecutive correct answers increase your multiplier (×1 → ×2 → ×3 → ×4)
-- Dynamic speed scaling
+- Dynamic speed scaling (Tiny mode holds a steady, unhurried pace)
 - "Flow State" visual effects and slow-motion moments
+
+### 🐣 Tiny Mode — built for 4–5 year olds
+- A short, finishable **mission**: get **10 correct** and you *win* the flight with a firework celebration — a clear "you did it" and a healthy stopping point, not an endless run
+- **No lives, fully crash-proof** — a wrong answer just counts it out and flies on, and bumping a building is a harmless wobble back to centre. Nothing ends the flight but finishing the mission
+- **Countable pictures** under the equation (🐥🐥 + 🐥) so a pre-reader can solve by counting, not recall
+- A calm, **steady pace** that never speeds up on a streak — the youngest always get time to think
+- A decluttered heads-up display: just **Score · Streak · Top Score**
+
+### 🧠 Smart Practice (every level)
+- **Wrong answers that teach** — the other gates aren't random; each mirrors a real mistake (miscounted by one, added instead of subtracted, wrote both digits, a times-table skip-count slip), so even rejecting a wrong answer is a small lesson
+- **Learning beat on a miss** — the gate that *was* right lights up green, turning the mistake into the most teachable moment in the game
+- **Adaptive review** — a fact you miss quietly comes back a few questions later until it sticks (solo play only; head-to-head challenge links stay identical for both players)
 
 ### 🛩 Plane Upgrades on Streaks
 Five plane tiers swap in automatically as your streak builds:
@@ -179,6 +191,8 @@ Top Sum is set over Marina Bay, and v15 leans in:
 | **Easy**   | Addition up to ~20                       | Lower primary         |
 | **Medium** | Addition + Subtraction up to ~50         | Mid primary           |
 | **Hard**   | Addition, Subtraction, Multiplication    | Upper primary and up  |
+
+> **Tiny** plays differently from the others — it's a forgiving, crash-proof **mission** (reach 10 correct to win), not a lives-based run. See **🐣 Tiny Mode** above.
 
 ---
 
