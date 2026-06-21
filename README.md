@@ -221,14 +221,17 @@ Top Sum is set over Marina Bay, and v15 leans in:
 
 - Pure HTML / CSS / JavaScript
 - WebGL via [Three.js](https://threejs.org)
-- Fully client-side — no backend, no accounts, no tracking of any kind by default
+- Fully client-side — no backend, no accounts, no personal-data tracking. Aggregate visit counts via Cloudflare Web Analytics (privacy-first: no cookies, no fingerprinting, no cross-site tracking)
 - Single-file architecture (`index.html`)
 
 Requires a modern browser with WebGL — Chrome, Safari, Firefox, or Edge on desktop or recent mobile.
 
-### 📊 Analytics (optional, off by default)
+### 📊 Analytics
 
-The repo includes an optional, privacy-first analytics setup in [`analytics/`](analytics/README.md) — a tiny Cloudflare Worker that counts anonymous events for the share/challenge funnel. No IP addresses, no user agents, no cookies, no identifiers; scores are stored as coarse buckets only. It is **completely disabled** until you deploy the Worker and paste its URL into `index.html` — out of the box, the game makes zero network calls. See [`analytics/README.md`](analytics/README.md) for setup.
+Privacy-first, in two independent tiers (details in [`analytics/`](analytics/README.md)):
+
+- **Traffic (active):** aggregate visit counts, referrers, and device/country breakdowns via Cloudflare Web Analytics — a single lightweight beacon. No cookies, no fingerprinting, no cross-site tracking, no IP or user-agent stored.
+- **Share/challenge funnel (off):** an optional Cloudflare Worker that counts anonymous funnel events, scores as coarse buckets only. Completely disabled until you deploy the Worker and paste its URL into `index.html`.
 
 ---
 
