@@ -8363,7 +8363,15 @@
     { name: 'The Merlion',        x: -172, z:  -75 },
     { name: 'Supertree Grove',    x:  295, z:  240 },
   ];
-  const lmContainer = document.getElementById('lm-captions');
+  // Create the overlay container in JS so it never depends on DOM parse order
+  // (this script runs synchronously mid-document — elements declared after it
+  // don't exist yet, which is exactly what broke boot on the first cut).
+  let lmContainer = document.getElementById('lm-captions');
+  if (!lmContainer) {
+    lmContainer = document.createElement('div');
+    lmContainer.id = 'lm-captions';
+    document.body.appendChild(lmContainer);
+  }
   const lmEls = LM_DATA.map(lm => {
     const el = document.createElement('div');
     el.className = 'lm-cap';
@@ -8434,7 +8442,6 @@
      Token shared with another mli3w.github.io project — both sites report
      under one property (same hostname); read this game's traffic via the
      per-path view (/top-sum/). Setup notes in analytics/README.md. -->
-<div id="lm-captions"></div>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"f5d503d3f11044ddbab4eb59adf8e9a7"}'></script>
 </body>
 </html>
