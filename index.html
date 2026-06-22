@@ -3478,6 +3478,45 @@
     pool.position.set(0, towerH + spH + 0.2, 5.5); g.add(pool);
     const garden = new THREE.Mesh(new THREE.BoxGeometry(spLen - 12, 0.3, 6), gardenMat);
     garden.position.set(0, towerH + spH + 0.2, -7); g.add(garden);
+
+    // === v19: NATIONAL DAY FACADE LIGHT-UP (festive only) ===
+    // Image-ref: MBS displays "SG ♥" across the tower faces on National Day.
+    // One additive canvas on two planes (both wide faces) so it reads from any
+    // approach. Toggled by festiveActive() each frame in tickSearchlights().
+    const sc = document.createElement('canvas');
+    sc.width = 512; sc.height = 256;
+    const sx = sc.getContext('2d');
+    sx.textAlign = 'center'; sx.textBaseline = 'middle';
+    sx.font = 'bold 150px Arial, sans-serif';
+    sx.shadowColor = '#ffffff'; sx.shadowBlur = 24;
+    sx.fillStyle = '#ffffff';
+    sx.fillText('SG', 175, 132);
+    sx.shadowColor = '#ee2536'; sx.shadowBlur = 30;
+    sx.fillStyle = '#ee2536';
+    const hx = 372, hy = 104, hs = 60;
+    sx.beginPath();
+    sx.moveTo(hx, hy + hs * 0.35);
+    sx.bezierCurveTo(hx, hy - hs * 0.30, hx - hs, hy - hs * 0.30, hx - hs, hy + hs * 0.12);
+    sx.bezierCurveTo(hx - hs, hy + hs * 0.55, hx - hs * 0.4, hy + hs * 0.92, hx, hy + hs * 1.18);
+    sx.bezierCurveTo(hx + hs * 0.4, hy + hs * 0.92, hx + hs, hy + hs * 0.55, hx + hs, hy + hs * 0.12);
+    sx.bezierCurveTo(hx + hs, hy - hs * 0.30, hx, hy - hs * 0.30, hx, hy + hs * 0.35);
+    sx.fill();
+    const signTex = new THREE.CanvasTexture(sc);
+    const signMat = new THREE.MeshBasicMaterial({
+      map: signTex, transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, fog: false
+    });
+    const signGroup = new THREE.Group();
+    for (const zf of [13.7, -13.7]) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(62, 31), signMat);
+      p.position.set(0, 80, zf);
+      if (zf < 0) p.rotation.y = Math.PI;
+      signGroup.add(p);
+    }
+    signGroup.visible = false;
+    g.add(signGroup);
+    window._mbsSign = signGroup;
+
     g.position.set(x, 0, z);
     return g;
   }
@@ -4054,10 +4093,14 @@
   // basin bank. Squashed spheres with a grey rim plinth.
   function buildGardenDome(x, z, rx, rz, h) {
     const g = new THREE.Group();
+    // v19: register the shell material in the dusk dimmer so the glass domes
+    // glow from within at sunset/National Day instead of going dark.
+    const shellMat = new THREE.MeshPhongMaterial({ color: 0xdfe9e4, shininess: 110,
+      emissive: 0x2a3a36, emissiveIntensity: 0.12 });
+    shellMat.userData.emiScale = 0.45;
+    timeAware.facadeMaterials.push(shellMat);
     const shell = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshPhongMaterial({ color: 0xdfe9e4, shininess: 110,
-        emissive: 0x2a3a36, emissiveIntensity: 0.12 }));
+      new THREE.SphereGeometry(1, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), shellMat);
     shell.scale.set(rx, h, rz);
     shell.castShadow = true;
     g.add(shell);
@@ -4122,9 +4165,13 @@
     const centre = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8.5, 4.5, 16),
       new THREE.MeshPhongMaterial({ color: 0xd8d4ca, shininess: 20 }));
     centre.position.set(409, 2.85, 207); centre.castShadow = true; g.add(centre);
-    const grassRoof = new THREE.Mesh(new THREE.CylinderGeometry(8.2, 8.2, 0.8, 16),
-      new THREE.MeshPhongMaterial({ color: 0x5d8a4a }));
-    grassRoof.position.set(409, 5.5, 207); g.add(grassRoof);
+    // v19: curve the flat roof disc into a low walkable green hill — the
+    // Barrage's signature roof-park silhouette.
+    const grassRoof = new THREE.Mesh(
+      new THREE.SphereGeometry(8.6, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshPhongMaterial({ color: 0x5d8a4a, shininess: 8 }));
+    grassRoof.scale.y = 0.5;
+    grassRoof.position.set(409, 4.7, 207); grassRoof.castShadow = true; g.add(grassRoof);
     return g;
   }
 
@@ -4215,7 +4262,9 @@
     for (let i = 0; i < 7; i++) {
       // seed stride 20 pins every roll to 11 = plain roofs (the skybridges
       // ARE the roofline), while the facade UV offsets still vary
-      g.add(buildBuilding(x + (i - 3) * 13, z, 9, 70, 9, 64 + i * 20,
+      // v19: thin slab towers (7 wide × 14 deep, long axis ⟂ to the row) so the
+      // two skybridges visibly span slab-to-slab — the Pinnacle signature.
+      g.add(buildBuilding(x + (i - 3) * 13, z, 7, 70, 14, 64 + i * 20,
         hdbFacadeMats[i % 2]));
     }
     for (const y of [37, 69]) {
@@ -4440,12 +4489,15 @@
   // Wealth, on Marina Centre behind the promenade NW of the Flyer.
   // Tops ≤66; the P10-P11 legs pass well above even at full down-drift.
   const suntecArc = [[180,-280],[180,-322],[215,-336],[250,-322],[250,-280]];
+  // v19: the Suntec "hand" — four tall slim finger towers + one short thumb,
+  // taller/slimmer than the old stubby boxes. Heights kept ≤66 so the nearby
+  // P10/P11 run (Y~92) and the drift gates still clear the verified envelope.
+  const suntecH = [62, 66, 64, 60, 30];
   suntecArc.forEach((p, i) => {
-    const h = 35 + (i*13)%25;
     // seed stride of 9 keeps the C2 style rolls well spread across the arc
-    const b = buildBuilding(p[0], p[1], 22, h, 22, 32 + i * 9, eastFacadeMat);
+    const b = buildBuilding(p[0], p[1], 18, suntecH[i], 18, 32 + i * 9, eastFacadeMat);
     scene.add(b);
-    addCollider(p[0], p[1], 14, 14, b.userData.totalH + 2);
+    addCollider(p[0], p[1], 11, 11, b.userData.totalH + 2);
   });
   scene.add(buildFountain(215, -301));
   // Background fill so the city doesn't just stop at the playfield edge —
@@ -4472,12 +4524,35 @@
     [-214.0, 336.0, 26, 116, 12, 0], [-240.0, 316.0, 22, 102, 15, 0],
     [-188.0, 346.0, 24,  90, 18, 0]
   ];
+  // v19: cool blue-glass material family so MBFC reads as the modern financial
+  // district at the bay's SW corner, distinct from the warm-mixed CBD canyon.
+  const mbfcFacadeMats = [0x3a5a7a, 0x46688a, 0x5878a0].map((tint, i) =>
+    makeFacadeMaterial(i % 2 === 0 ? facadeTexA : facadeTexB,
+                       i % 2 === 0 ? 'cbdA' : 'cbdB', tint, 1));
   mbfcTowers.forEach(([x, z, w, h, seed, mast], i) => {
     const b = buildBuilding(x, z, w, h, w, seed,
-      cbdFacadeMats[i % cbdFacadeMats.length], !!mast);
+      mbfcFacadeMats[i % mbfcFacadeMats.length], !!mast);
     scene.add(b);
     addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
   });
+
+  // === v19: THE PROMONTORY / "THE LAWN" @ MARINA BAY ===
+  // The chevron waterfront lawn in front of MBFC — the real home of the bay's
+  // light-beam shows. A flat green chevron pointing into the bay; the National
+  // Day searchlights (festive) rise from its centre. (Searchlight group below
+  // is pinned to the SAME coords — keep them in sync.)
+  {
+    const ls = new THREE.Shape();
+    ls.moveTo(-24, -14); ls.lineTo(0, 6);  ls.lineTo(24, -14);
+    ls.lineTo(24, 4);    ls.lineTo(0, 24); ls.lineTo(-24, 4);
+    ls.closePath();
+    const lg = new THREE.ExtrudeGeometry(ls, { depth: 0.5, bevelEnabled: false });
+    lg.rotateX(-Math.PI / 2);   // shape-y → world -z (chevron points into the bay)
+    const lawn = new THREE.Mesh(lg, new THREE.MeshPhongMaterial({ color: 0x3f7a3a }));
+    lawn.position.set(-112, 0.25, 196);
+    lawn.receiveShadow = true;
+    scene.add(lawn);
+  }
 
   // === v16.2: GARDEN CITY RING — recognizable landmarks at distance ===
   // National Stadium at the Kallang end of the basin (its real spot)
@@ -6406,7 +6481,8 @@
   let spectraTimer = 0;
   let spectraActive = false;
   function tickSpectra(dt, time) {
-    if (Settings.timeOfDay !== 'sunset') {
+    // v19: also fire on National Day (image-ref: beams over the bay), not just sunset.
+    if (Settings.timeOfDay !== 'sunset' && !window.festiveActive()) {
       spectraBeams.forEach(b => b.mat.opacity = 0);
       spectraActive = false;
       spectraTimer = 0;
@@ -6427,6 +6503,57 @@
         b.mat.opacity = 0;
       }
     });
+  }
+
+  // === v19: NATIONAL DAY SEARCHLIGHTS (festive) ===
+  // Image-ref: cool-white event beams fanning up and crossing over the NS Square
+  // field on National Day. Open additive cones, apex at the field, widening
+  // skyward, slowly sweeping so they cross. Reuses the Spectra beam idiom.
+  // Festive-gated; reads best against the dusk sky.
+  const searchlightGroup = new THREE.Group();
+  searchlightGroup.position.set(-112, 0, 196);   // The Promontory lawn @ MBFC (sync w/ lawn)
+  const SL_N = isMobilePerf ? 9 : 15;
+  const SL_COLORS = [0xbfe3ff, 0xffffff, 0xd6ecff];   // cool white-blue
+  const searchBeams = [];
+  for (let i = 0; i < SL_N; i++) {
+    const m = new THREE.MeshBasicMaterial({
+      color: SL_COLORS[i % SL_COLORS.length], transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, fog: false
+    });
+    // tall open cone, tip down at the field, widening to a soft beam up top
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(5.5, 300, 10, 1, true), m);
+    cone.rotation.x = Math.PI;     // flip: apex points down to the ground
+    cone.position.y = 150;         // lift so the apex sits at field level
+    const ring = new THREE.Group();
+    ring.add(cone);
+    const a = (i / SL_N) * Math.PI * 2;
+    ring.rotation.y = a;
+    ring.rotation.z = 0.14 + (i % 4) * 0.05;   // outward tilt → fan + cross
+    searchBeams.push({ ring, a, baseTilt: ring.rotation.z, mat: m, phase: i * 0.5 });
+    searchlightGroup.add(ring);
+  }
+  // Image-ref: the bright circular light array on the lawn the beams rise from.
+  const slBase = new THREE.Mesh(
+    new THREE.TorusGeometry(7, 0.5, 6, 26),
+    new THREE.MeshBasicMaterial({ color: 0xcfeaff, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  slBase.rotation.x = Math.PI / 2; slBase.position.y = 0.6;
+  searchlightGroup.add(slBase);
+  searchlightGroup.visible = false;
+  scene.add(searchlightGroup);
+  function tickSearchlights(dt, time) {
+    const on = window.festiveActive();
+    // Image-ref 2: MBS "SG ♥" facade light-up rides the same festive gate.
+    if (window._mbsSign) window._mbsSign.visible = on;
+    searchlightGroup.visible = on;
+    if (!on) return;
+    for (let i = 0; i < searchBeams.length; i++) {
+      const b = searchBeams[i];
+      b.ring.rotation.y = b.a + time * 0.05 + Math.sin(time * 0.22 + b.phase) * 0.4;
+      b.ring.rotation.z = b.baseTilt + Math.sin(time * 0.45 + b.phase) * 0.06;
+      b.mat.opacity = 0.08 + (Math.sin(time * 1.1 + b.phase) * 0.5 + 0.5) * 0.12;
+    }
   }
 
   // === v11: TINY MODE DIRECTIONAL ARROW ===
@@ -7663,6 +7790,7 @@
     fighterFormation.tick(t);
     tickFireworks(rawDt, t);
     tickSpectra(rawDt, t);
+    tickSearchlights(rawDt, t);
     tickBeacons(t);      // Part C4: aircraft-warning blinkers
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 
