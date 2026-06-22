@@ -1502,12 +1502,18 @@
     display: none;
     position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(20, 0, 10, 0.92), rgba(10, 20, 30, 0.92));
-    align-items: center; justify-content: center;
+    align-items: center;
+    /* v19: mirror the #title fix — `safe center` keeps the content centred when
+       it fits but never clips the top when the festive honour-roll card pushes
+       the button row past the fold; overflow-y:auto lets it scroll instead. */
+    justify-content: flex-start;
+    justify-content: safe center;
     flex-direction: column;
     pointer-events: auto; z-index: 11;
     padding: 20px;
     padding-top: calc(20px + var(--safe-top));
     padding-bottom: calc(20px + var(--safe-bottom));
+    overflow-y: auto;
   }
   #gameover.show { display: flex; }
   /* v15 Part B: hierarchy flip — FINAL SCORE is the biggest thing on the
@@ -2939,6 +2945,10 @@
 
   function applyTimeOfDay() {
     const sunset = Settings.timeOfDay === 'sunset';
+    // v19: run dusk a touch darker so the additive lights (windows, gates, sun
+    // glitter, drones) pop against a deeper purple base instead of riding the
+    // ACES shoulder toward grey. Day stays at the neutral-ish 1.1.
+    if (renderer) renderer.toneMappingExposure = sunset ? 0.95 : 1.1;
     if (sunset) {
       // D5: tuned against the dusk reference photos — horizon pulled toward
       // golden-amber (old 0xff8855 blended with 0xffb066), upper sky toward
@@ -2948,6 +2958,9 @@
       skyMat.uniforms.bottomColor.value.setHex(0xff9c5d);
       sun.color.setHex(0xff9966);
       sun.intensity = 0.7;
+      // v19: drop the light to the disc's low elevation so the city casts long
+      // warm raking shadows — the dominant golden-hour cue at flight altitude.
+      sun.position.set(400, 160, 250);
       ambient.color.setHex(0x6a4a6a);
       ambient.intensity = 0.5;
       hemi.color.setHex(0xff9988);
@@ -2980,6 +2993,7 @@
       skyMat.uniforms.bottomColor.value.setHex(0xfdd9a8);
       sun.color.setHex(0xffe9c0);
       sun.intensity = 1.0;
+      sun.position.set(400, 600, 250);   // v19: restore the high near-noon angle
       ambient.color.setHex(0x6a88aa);
       ambient.intensity = 0.55;
       hemi.color.setHex(0xaaccee);
@@ -2993,7 +3007,9 @@
       waterMat.emissiveIntensity = 0;
       if (window._sunSprite) {
         window._sunSprite.position.copy(new THREE.Vector3(400, 600, 250).normalize()).multiplyScalar(2100);
-        window._sunSprite.scale.setScalar(370);
+        // v19: smaller, tighter day disc (mostly the white core shows) so it reads
+        // as a high noon sun, not a hazy blob — and so the 540 dusk disc is clearly bigger.
+        window._sunSprite.scale.setScalar(220);
         window._sunSprite.material.opacity = 0.82;
       }
       // Day gate scheme: red-coral, low emissive (sun does the work)
@@ -3559,14 +3575,16 @@
     const spLen = 76, spW = 24, spH = 5;
     // v19: boat-hull skypark — ONE ExtrudeGeometry replacing flat box + canti box.
     // Prow extends ~20 u past the east tower, tapers to a point.
+    // Deck half-width 14 > the towers' ±13 z-footprint, so the boat OVERHANGS
+    // the three towers (the real SkyPark cantilevers) instead of being undercut.
     const boatShape = new THREE.Shape();
-    boatShape.moveTo(-38, -11);
-    boatShape.lineTo(38, -11);
-    boatShape.lineTo(50, -4);
+    boatShape.moveTo(-38, -14);
+    boatShape.lineTo(38, -14);
+    boatShape.lineTo(50, -5);
     boatShape.lineTo(58, 0);
-    boatShape.lineTo(50, 4);
-    boatShape.lineTo(38, 11);
-    boatShape.lineTo(-38, 11);
+    boatShape.lineTo(50, 5);
+    boatShape.lineTo(38, 14);
+    boatShape.lineTo(-38, 14);
     boatShape.closePath();
     const boatGeo = new THREE.ExtrudeGeometry(boatShape, { depth: spH, bevelEnabled: false });
     boatGeo.rotateX(-Math.PI / 2);
@@ -3574,8 +3592,9 @@
     skypark.position.y = towerH;
     skypark.rotation.z = -0.04;
     skypark.castShadow = true; g.add(skypark);
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(spLen + 22, 0.5, spW + 1), trimMat);
-    trim.position.set(4, towerH + spH - 0.1, 0); g.add(trim);
+    // trim cap reaches the prow tip (x≈59) and tucks just inside the ±14 deck edge
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(spLen + 27, 0.5, spW + 2), trimMat);
+    trim.position.set(7, towerH + spH - 0.1, 0); g.add(trim);
     const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 8, 0.4, 7), poolMat);
     pool.position.set(0, towerH + spH + 0.2, 5.5); g.add(pool);
     const garden = new THREE.Mesh(new THREE.BoxGeometry(spLen - 12, 0.3, 6), gardenMat);
@@ -4076,13 +4095,16 @@
     cap.userData.emiScale = 0.6;
     timeAware.facadeMaterials.push(cap);
     const sup  = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
-    // v19: 4-leg A-frame (two triangles meeting at hub) — distinguishes Flyer from generic Ferris wheel
+    // v19: 4-leg A-frame (two triangles meeting at hub) — distinguishes Flyer from generic Ferris wheel.
+    // Each leg runs from a wide base corner (sx,0,sz) up to the hub apex (0,hubH,0): top converges,
+    // base splays. The rotation signs orient local +Y along (-sx, hubH, -sz) — flip either sign and
+    // the A inverts into an unstable point-down pyramid.
     for (const [sx, sz] of [[8,6],[-8,6],[8,-6],[-8,-6]]) {
       const legLen = Math.sqrt(sx*sx + hubH*hubH + sz*sz);
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.8, legLen, 6), sup);
       leg.position.set(sx / 2, hubH / 2, sz / 2);
-      leg.rotation.z = -Math.atan2(sx, hubH);
-      leg.rotation.x =  Math.atan2(sz, hubH);
+      leg.rotation.z =  Math.atan2(sx, hubH);
+      leg.rotation.x = -Math.atan2(sz, hubH);
       leg.castShadow = true; g.add(leg);
     }
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 6, 12), sup);
@@ -4530,10 +4552,13 @@
     // the old per-floor band loop (~55 meshes per estate) and the one-off
     // water tanks are gone; the C3 rooftop prop kit redresses the roofs.
     const g = new THREE.Group();
-    // v19: slab footprints — 28×10 long slabs with rotation.y offsets (real HDB read)
-    const arr = [[-18,-10,38,0.18],[0,-12,44,0.0],[18,-10,36,-0.22],[-10,14,40,0.10],[12,12,46,-0.08]];
+    // v19: slab footprints — long thin blocks (10 wide × 20 deep, long axis along z) in two
+    // parallel rows. The original 13×13 cubes read as a box cluster; long slabs with gaps read
+    // as an estate. Widths kept ≤ the x-offset spacing (and the two rows separated in z) so the
+    // blocks never intersect; small rotation.y for organic break. Footprint ≈ the old cluster.
+    const arr = [[-18,-10,38,0.06],[0,-12,44,0.0],[18,-10,36,-0.07],[-10,14,40,0.05],[12,12,46,-0.04]];
     arr.forEach((p, i) => {
-      const w = 28, d = 10, h = p[2];
+      const w = 10, d = 20, h = p[2];
       const mat = hdbFacadeMats[i % hdbFacadeMats.length];
       const block = new THREE.Mesh(facadeBoxGeo(w, h, d, 'hdb', i * 5 + Math.round(Math.abs(x))), mat);
       block.position.set(p[0], h / 2, p[1]);
@@ -6751,7 +6776,9 @@
         const t = (i / n) * Math.PI * 2;
         const x = 16 * Math.pow(Math.sin(t), 3) * 2.8;
         const y = (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) * 2.4;
-        p[i*3]=BX+x*0.55; p[i*3+1]=BY+y*0.5; p[i*3+2]=BZ;
+        // shallow z-spread (like the star/ring) so the heart never collapses to an
+        // edge-on line as the idle camera orbits past its plane
+        p[i*3]=BX+x*0.55; p[i*3+1]=BY+y*0.5; p[i*3+2]=BZ+x*0.2;
       }
       return p;
     }
@@ -8386,12 +8413,22 @@
       lmEls.forEach(el => el.classList.remove('vis'));
       return;
     }
-    const fwdAngle = t * 0.1 + Math.PI;  // camera forward orbit angle
+    // Camera-relative bearing: compare the camera→landmark direction against the
+    // camera's forward (camera→lookAt) direction in the horizontal plane. Using
+    // true parallax (not bearing-from-origin) separates near-collinear landmarks
+    // like Helix vs Flyer by distance. Show only the SINGLE most-centred landmark
+    // (argmin), gated so a caption never names something well off to the side —
+    // which also kills the old "3 captions stacked on one pixel" bug.
+    const cx = Math.cos(t * 0.1) * 380, cz = Math.sin(t * 0.1) * 380 + 20;
+    const fwd = Math.atan2(25 - cz, -15 - cx);
+    let best = -1, bestAbs = 0.38;   // gate ≈ 22°
     LM_DATA.forEach((lm, i) => {
-      const lmAngle = Math.atan2(lm.z, lm.x);
-      let diff = ((lmAngle - fwdAngle) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
-      lmEls[i].classList.toggle('vis', Math.abs(diff) < 0.22);
+      const ang = Math.atan2(lm.z - cz, lm.x - cx);
+      let diff = ((ang - fwd) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+      diff = Math.abs(diff);
+      if (diff < bestAbs) { bestAbs = diff; best = i; }
     });
+    lmEls.forEach((el, i) => el.classList.toggle('vis', i === best));
   }
 
   function loop() {
