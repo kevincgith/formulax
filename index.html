@@ -4707,12 +4707,19 @@
   // gates clear, hard drift clips), two of them masted. Three more form the
   // skyline at the loop's far SW corner, beyond the path. [x, z, w, h, seed, mast]
   const mbfcTowers = [
+    // 6 path-flanking towers — flight-VERIFIED (the path threads them at P17).
+    // Their offsets/clearances were proven offline; do NOT move them.
     [-264.5, 241.1, 22, 130, 7, 1], [-183.2, 207.4, 22, 122, 2, 1],
     [-224.4, 290.2, 20,  96, 9, 0], [-176.2, 216.6, 20,  92, 4, 0],
     [-166.3, 314.2, 22, 108, 3, 0], [-143.4, 229.3, 22, 100, 5, 0],
-    // SW-tip skyline cluster (non-contactable)
-    [-214.0, 336.0, 26, 116, 12, 0], [-240.0, 316.0, 22, 102, 15, 0],
-    [-188.0, 346.0, 24,  90, 18, 0]
+    // SW-tip skyline cluster (non-contactable, beyond the path) — shifted WEST and
+    // spread apart so it no longer walls off the Tanjong Pagar port behind it; the
+    // z-gaps open a clear SW sightline from the bay tour to the cranes.
+    [-332.0, 296.0, 24, 116, 12, 0], [-348.0, 392.0, 22, 102, 15, 0],
+    [-316.0, 460.0, 24,  92, 18, 0],
+    // sparse, short backfill where the cluster used to sit — keeps a skyline edge
+    // but with big gaps to see through (both well south of the P17→P0 curve)
+    [-210.0, 342.0, 22,  74, 21, 0], [-176.0, 368.0, 20,  64, 24, 0]
   ];
   // v19: cool blue-glass material family so MBFC reads as the modern financial
   // district at the bay's SW corner, distinct from the warm-mixed CBD canyon.
