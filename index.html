@@ -2870,18 +2870,20 @@
   {
     const sc = document.createElement('canvas'); sc.width = sc.height = 128;
     const sx = sc.getContext('2d');
-    const g = sx.createRadialGradient(64, 64, 3, 64, 64, 64);
-    g.addColorStop(0, 'rgba(255,252,230,1.0)');
-    g.addColorStop(0.25, 'rgba(255,220,140,0.85)');
-    g.addColorStop(0.65, 'rgba(255,160,60,0.35)');
-    g.addColorStop(1, 'rgba(255,120,30,0)');
+    // Soft, gradual falloff (no hot 1.0 core) so additive blending reads as a
+    // gentle glow rather than a hard white ball.
+    const g = sx.createRadialGradient(64, 64, 2, 64, 64, 64);
+    g.addColorStop(0,    'rgba(255,248,228,0.85)');
+    g.addColorStop(0.30, 'rgba(255,224,150,0.45)');
+    g.addColorStop(0.62, 'rgba(255,170,80,0.18)');
+    g.addColorStop(1,    'rgba(255,130,40,0)');
     sx.fillStyle = g; sx.fillRect(0, 0, 128, 128);
     window._sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(sc),
-      blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.82
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.5
     }));
     window._sunSprite.position.copy(new THREE.Vector3(400, 600, 250).normalize()).multiplyScalar(2100);
-    window._sunSprite.scale.setScalar(370);
+    window._sunSprite.scale.setScalar(260);
     scene.add(window._sunSprite);
   }
   const ambient = new THREE.AmbientLight(0x6a88aa, 0.55);
@@ -2893,32 +2895,12 @@
   const waterSeg = isMobilePerf ? 22 : 40;
   const waterGeo = new THREE.PlaneGeometry(4000, 4000, waterSeg, waterSeg);
   waterGeo.rotateX(-Math.PI / 2);
+  // Clean stylized water: the per-vertex wave displacement in the loop carries the
+  // motion; a softer specular gives one broad sun-glint instead of harsh hotspots.
+  // (A canvas normalMap was tried in v19 but tiled into big soft blobs — removed.)
   const waterMat = new THREE.MeshPhongMaterial({
-    color: 0x1d5a8a, shininess: 120, specular: 0x99bbdd
+    color: 0x1d5a8a, shininess: 70, specular: 0x7fa6c4
   });
-  // v19: scrolling canvas ripple normalMap — the moving glitter band that makes the bay read as water
-  {
-    const wc = document.createElement('canvas'); wc.width = wc.height = 256;
-    const wd = wc.getContext('2d').createImageData(256, 256);
-    for (let j = 0; j < 256; j++) {
-      for (let i = 0; i < 256; i++) {
-        const nx = Math.sin(i / 10.0) * Math.sin(j / 13.0) * 0.55 + 0.5;
-        const ny = Math.cos(i / 17.0) * Math.cos(j /  9.0) * 0.55 + 0.5;
-        const idx = (j * 256 + i) * 4;
-        wd.data[idx]   = Math.round(nx * 255);
-        wd.data[idx+1] = Math.round(ny * 255);
-        wd.data[idx+2] = 220;  // mostly up
-        wd.data[idx+3] = 255;
-      }
-    }
-    wc.getContext('2d').putImageData(wd, 0, 0);
-    const wTex = new THREE.CanvasTexture(wc);
-    wTex.wrapS = wTex.wrapT = THREE.RepeatWrapping;
-    wTex.repeat.set(10, 10);
-    waterMat.normalMap = wTex;
-    waterMat.normalScale = new THREE.Vector2(0.55, 0.55);
-    window._waterNormalTex = wTex;
-  }
   const water = new THREE.Mesh(waterGeo, waterMat);
   water.receiveShadow = true;
   water.position.y = -0.05;
@@ -2976,8 +2958,8 @@
       waterMat.emissiveIntensity = 0.15;
       if (window._sunSprite) {
         window._sunSprite.position.copy(new THREE.Vector3(400, 160, 250).normalize()).multiplyScalar(2100);
-        window._sunSprite.scale.setScalar(540);
-        window._sunSprite.material.opacity = 0.95;
+        window._sunSprite.scale.setScalar(480);
+        window._sunSprite.material.opacity = 0.62;
       }
       // Sunset gate scheme: golden, high emissive (glow does the work)
       timeAware.gateScheme = { ringColor: 0xffd24d, ringEmissive: 0xff9911,
@@ -3007,10 +2989,9 @@
       waterMat.emissiveIntensity = 0;
       if (window._sunSprite) {
         window._sunSprite.position.copy(new THREE.Vector3(400, 600, 250).normalize()).multiplyScalar(2100);
-        // v19: smaller, tighter day disc (mostly the white core shows) so it reads
-        // as a high noon sun, not a hazy blob — and so the 540 dusk disc is clearly bigger.
-        window._sunSprite.scale.setScalar(220);
-        window._sunSprite.material.opacity = 0.82;
+        // small, soft day disc — a gentle high-sun glow, not a hard white ball
+        window._sunSprite.scale.setScalar(240);
+        window._sunSprite.material.opacity = 0.5;
       }
       // Day gate scheme: red-coral, low emissive (sun does the work)
       timeAware.gateScheme = { ringColor: 0xee3344, ringEmissive: 0xff4422,
@@ -3309,10 +3290,11 @@
                    z1 + (z2 - z1) * t + (rnd() - 0.5) * 12, 0.8 + rnd() * 0.4);
         }
       });
-    // 5) city-wide scatter
-    const scatterN = isMobilePerf ? 60 : 150;
+    // 5) city-wide scatter — denser so the open green stretches don't read empty
+    // (all trees are still just two InstancedMesh draw calls)
+    const scatterN = isMobilePerf ? 110 : 260;
     for (let i = 0; i < scatterN; i++) {
-      tryPlant(-520 + rnd() * 1040, -470 + rnd() * 950, 0.7 + rnd() * 0.6);
+      tryPlant(-520 + rnd() * 1040, -470 + rnd() * 950, 0.7 + rnd() * 0.7);
     }
     // two draw calls for the whole forest
     const n = plan.length;
@@ -3609,10 +3591,10 @@
     const sx = sc.getContext('2d');
     sx.textAlign = 'center'; sx.textBaseline = 'middle';
     sx.font = 'bold 150px Arial, sans-serif';
-    sx.shadowColor = '#ffffff'; sx.shadowBlur = 24;
-    sx.fillStyle = '#ffffff';
+    sx.shadowColor = '#ffffff'; sx.shadowBlur = 10;
+    sx.fillStyle = '#eef2ff';
     sx.fillText('SG', 175, 132);
-    sx.shadowColor = '#ee2536'; sx.shadowBlur = 30;
+    sx.shadowColor = '#ee2536'; sx.shadowBlur = 12;
     sx.fillStyle = '#ee2536';
     const hx = 372, hy = 104, hs = 60;
     sx.beginPath();
@@ -3625,7 +3607,7 @@
     const signTex = new THREE.CanvasTexture(sc);
     const signMat = new THREE.MeshBasicMaterial({
       map: signTex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, fog: false
+      depthWrite: false, fog: false, opacity: 0.5
     });
     const signGroup = new THREE.Group();
     for (const zf of [13.7, -13.7]) {
@@ -4492,28 +4474,34 @@
   // the strait-facing coast. Nothing says Singapore from the air like them.
   function buildPort(x, z) {
     const g = new THREE.Group();
-    const craneMat = new THREE.MeshPhongMaterial({ color: 0xd8dde2, shininess: 30 });
-    const boomMat = new THREE.MeshPhongMaterial({ color: 0xc04438, shininess: 25 });
-    for (let i = 0; i < 4; i++) {
-      const cx = i * 30;
-      for (const lx of [-5, 5]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(1.6, 22, 1.6), craneMat);
-        leg.position.set(cx + lx, 11, 0); leg.castShadow = true; g.add(leg);
+    const craneMat = new THREE.MeshPhongMaterial({ color: 0xe2e7ec, shininess: 30 });
+    const boomMat = new THREE.MeshPhongMaterial({ color: 0xd24a3c, shininess: 25 });
+    const H = 40;                       // tall gantry — reads from the air over the fog
+    for (let i = 0; i < 6; i++) {
+      const cx = i * 34;
+      // 4-leg portal frame
+      for (const lx of [-6, 6]) for (const lz of [-7, 7]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(2, H, 2), craneMat);
+        leg.position.set(cx + lx, H / 2, lz); leg.castShadow = true; g.add(leg);
       }
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(13, 1.8, 2.4), craneMat);
-      beam.position.set(cx, 22, 0); g.add(beam);
-      const boom = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 26), boomMat);
-      boom.position.set(cx, 23.5, 9);
-      boom.rotation.x = 0.18;
-      boom.castShadow = true; g.add(boom);
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(16, 2.6, 18), craneMat);
+      beam.position.set(cx, H, 0); beam.castShadow = true; g.add(beam);
+      // long boom reaching out over the water — the signature container-crane silhouette
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 42), boomMat);
+      boom.position.set(cx, H + 3.5, 18); boom.castShadow = true; g.add(boom);
+      // short counter-boom landward + A-frame apex tie
+      const cboom = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 14), boomMat);
+      cboom.position.set(cx, H + 3.5, -11); g.add(cboom);
+      const apex = new THREE.Mesh(new THREE.ConeGeometry(2.6, 11, 4), craneMat);
+      apex.position.set(cx, H + 9, 4); apex.castShadow = true; g.add(apex);
     }
     // container stacks in port colours
     const boxColors = [0xc04438, 0x3a6ea8, 0x3f8a4f, 0xc78f2e];
-    for (let i = 0; i < 10; i++) {
-      const c = new THREE.Mesh(new THREE.BoxGeometry(9, 2.6, 3.4),
+    for (let i = 0; i < 18; i++) {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(11, 3.2, 4),
         new THREE.MeshPhongMaterial({ color: boxColors[i % 4], shininess: 20 }));
-      c.position.set(((i * 37) % 100) - 5, 1.3 + Math.floor(i / 5) * 2.6,
-                     -10 - (i % 3) * 5);
+      c.position.set(((i * 41) % 180) - 12, 1.6 + Math.floor(i / 9) * 3.2,
+                     -16 - (i % 3) * 5.5);
       g.add(c);
     }
     g.position.set(x, 0, z); return g;
@@ -4660,23 +4648,30 @@
     addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
     // v19: bespoke crowns on the two tallest towers
     if (seed === 1) {
-      // Republic Plaza — stacked setbacks + 4-seg obelisk tip
+      // Republic Plaza — bold stepped pyramid + tall tapering spire that clearly
+      // spikes above the skyline (light crown vs the dark towers reads at distance)
       const crown = new THREE.Group();
-      const s1 = new THREE.Mesh(new THREE.BoxGeometry(14, 16, 14), cbdCrownMat);
-      s1.position.y = h + 8; crown.add(s1);
-      const s2 = new THREE.Mesh(new THREE.BoxGeometry(8, 10, 8), cbdCrownMat);
-      s2.position.y = h + 16 + 5; crown.add(s2);
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(5.5, 22, 4), cbdCrownMat);
-      tip.position.y = h + 26 + 11; tip.rotation.y = Math.PI / 4; crown.add(tip);
+      const s1 = new THREE.Mesh(new THREE.BoxGeometry(16, 14, 16), cbdCrownMat);
+      s1.position.y = h + 7; crown.add(s1);
+      const s2 = new THREE.Mesh(new THREE.BoxGeometry(11, 12, 11), cbdCrownMat);
+      s2.position.y = h + 20; crown.add(s2);
+      const s3 = new THREE.Mesh(new THREE.BoxGeometry(6.5, 12, 6.5), cbdCrownMat);
+      s3.position.y = h + 32; crown.add(s3);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(4.2, 34, 4), cbdCrownMat);
+      tip.position.y = h + 55; tip.rotation.y = Math.PI / 4; crown.add(tip);
       crown.position.set(x, 0, z); scene.add(crown);
     } else if (seed === 9) {
-      // UOB — twin offset shafts above the existing setback
+      // UOB Plaza — twin peaks with pyramid caps + a sky-bridge tie between them
       const crown = new THREE.Group();
       const topBase = h + h * 0.22; // above buildBuilding's setback crown
-      for (const sx of [-5, 5]) {
-        const shaft = new THREE.Mesh(new THREE.BoxGeometry(6, 22, 6), cbdCrownMat);
-        shaft.position.set(sx, topBase + 11, 0); crown.add(shaft);
+      for (const sx of [-5.5, 5.5]) {
+        const shaft = new THREE.Mesh(new THREE.BoxGeometry(7, 34, 7), cbdCrownMat);
+        shaft.position.set(sx, topBase + 17, 0); crown.add(shaft);
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(3.4, 9, 4), cbdCrownMat);
+        cap.position.set(sx, topBase + 38.5, 0); cap.rotation.y = Math.PI / 4; crown.add(cap);
       }
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 4), cbdCrownMat);
+      bridge.position.set(0, topBase + 28, 0); crown.add(bridge);
       crown.position.set(x, 0, z); scene.add(crown);
     }
   });
@@ -8080,17 +8075,13 @@
     tickSpectra(rawDt, t);
     tickSearchlights(rawDt, t);
     if (window._tickDroneShow) window._tickDroneShow(rawDt);
-    if (window._waterNormalTex) {
-      window._waterNormalTex.offset.x += rawDt * 0.010;
-      window._waterNormalTex.offset.y += rawDt * 0.007;
-    }
+    if (typeof updateLandmarkCaptions === 'function') updateLandmarkCaptions(t);
     tickBeacons(t);      // Part C4: aircraft-warning blinkers
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 
     if (game.state !== 'playing') {
       camera.position.set(Math.cos(t * 0.1) * 380, 200, Math.sin(t * 0.1) * 380 + 20);
       camera.lookAt(-15, 60, 25);   // v16: rebuilt bay center
-      if (typeof updateLandmarkCaptions === 'function') updateLandmarkCaptions(t);
       return;
     }
 
