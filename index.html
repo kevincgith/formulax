@@ -1131,6 +1131,24 @@
   .card--gold    { border-color: var(--gold-line); }
   .card--magenta { border-color: var(--magenta-line); }
   .card--danger  { border-color: var(--danger-line); }
+  .card--sg      { border-color: var(--gold-line); box-shadow: 0 0 22px rgba(238,37,54,0.28); }
+  #nd-honour-roll { max-width: 360px; margin: 0 auto 10px; padding: 12px 14px 10px; text-align: center; }
+  .nd-hr-title { font-family: var(--font-display); font-size: clamp(11px,2.6vw,15px); letter-spacing: 0.08em; color: var(--gold-bright); margin-bottom: 8px; }
+  .nd-hr-grid  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 10px; margin-bottom: 8px; }
+  .nd-hr-cell  { display: flex; flex-direction: column; align-items: center; }
+  .nd-hr-val   { font-family: var(--font-display); font-size: clamp(14px,3.2vw,18px); color: var(--gold-bright); }
+  .nd-hr-lbl   { font-size: clamp(9px,1.8vw,11px); color: var(--cyan-bright); opacity: 0.8; text-transform: uppercase; letter-spacing: 0.06em; }
+  .nd-hr-foot  { font-size: clamp(10px,2vw,12px); color: var(--gold-bright); opacity: 0.9; }
+  @keyframes ndHrIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+  #nd-honour-roll.intro { animation: ndHrIn 280ms ease-out both; }
+  /* v19 Part 2 Leg 2: Landmark captions — festive idle-orbit overlay */
+  #lm-captions { position:fixed; inset:0; pointer-events:none; z-index:12; }
+  .lm-cap { position:absolute; left:50%; bottom:28%; transform:translate(-50%,0);
+    font-family:var(--font-display); font-size:clamp(11px,2.4vw,15px); letter-spacing:0.10em;
+    color:var(--gold-bright); background:rgba(0,0,0,0.45); border:1px solid var(--gold-line);
+    border-radius:20px; padding:5px 16px; white-space:nowrap;
+    opacity:0; transition:opacity 0.5s ease; pointer-events:none; }
+  .lm-cap.vis { opacity:1; }
 
   /* Segmented controls: real inputs stay (Settings JS reads name/value/id),
      visually hidden; the sibling <span> is the 44px+ pill. */
@@ -2313,6 +2331,19 @@
       <div class="vs-row"><span>You</span><b id="vs-you">0</b></div>
       <div class="vs-row"><span id="vs-them-label">Challenger</span><b id="vs-them">0</b></div>
       <div class="vs-verdict" id="vs-verdict">—</div>
+    </div>
+    <!-- v19 Part 2 Leg 3: National Day Honour-Roll — festive only -->
+    <div id="nd-honour-roll" class="card card--sg" style="display:none">
+      <div class="nd-hr-title">🇸🇬 NATIONAL DAY HONOUR ROLL</div>
+      <div class="nd-hr-grid">
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-best-score">0</span><span class="nd-hr-lbl">Best Score</span></div>
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-best-streak">×0</span><span class="nd-hr-lbl">Best Streak</span></div>
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-correct">0</span><span class="nd-hr-lbl">This Flight</span></div>
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-flights">0</span><span class="nd-hr-lbl">Total Flights</span></div>
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-sunset">—</span><span class="nd-hr-lbl">Sunset Mode</span></div>
+        <div class="nd-hr-cell"><span class="nd-hr-val" id="hr-plane">—</span><span class="nd-hr-lbl">Top Plane</span></div>
+      </div>
+      <div class="nd-hr-foot" id="hr-footer">Majulah! 🇸🇬</div>
     </div>
     <div class="score-line">Best Score: <b id="go-best">0</b></div>
     <div class="score-line">Best Streak: <b id="go-streak">0</b></div>
@@ -5469,6 +5500,7 @@
     if (streak >= 3) return 2;
     return 1;
   }
+  const PLANE_TIER_LABELS = { 1:'TRAINER', 2:'CONTRAILS', 3:'FIGHTER', 4:'STEALTH', 5:'PLASMA' };
 
   // === PLANE TRAIL ===
   const TRAIL_LEN = 60;
@@ -6695,6 +6727,74 @@
     }
   }
 
+  // === v19 Part 2 Leg 1: DRONE LIGHT SHOW ===
+  // ONE THREE.Points cloud, 3 formations (circle→star→heart), red/white vertexColors.
+  // AdditiveBlending, depthWrite:false, fog:false. One draw call regardless of count.
+  {
+    const DN = isMobilePerf ? 60 : 120;
+    const BX = 60, BY = 195, BZ = -90;  // sky anchor above the bay water
+
+    function _droneStar(n) {
+      const p = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const arm = Math.floor((i / n) * 5), f = ((i / n) * 5) % 1;
+        const a0 = (arm / 5) * Math.PI * 2 - Math.PI / 2, aMid = a0 + Math.PI / 5;
+        const x = ((1-f)*Math.cos(a0)*48 + f*Math.cos(aMid)*19);
+        const y = ((1-f)*Math.sin(a0)*48 + f*Math.sin(aMid)*19);
+        p[i*3]=BX+x*0.9; p[i*3+1]=BY+y*0.5; p[i*3+2]=BZ+x*0.25;
+      }
+      return p;
+    }
+    function _droneHeart(n) {
+      const p = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        const x = 16 * Math.pow(Math.sin(t), 3) * 2.8;
+        const y = (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) * 2.4;
+        p[i*3]=BX+x*0.55; p[i*3+1]=BY+y*0.5; p[i*3+2]=BZ;
+      }
+      return p;
+    }
+    function _droneRing(n) {
+      const p = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const r = 28 + (i % 4) * 9;
+        p[i*3]=BX+Math.cos(a)*r; p[i*3+1]=BY+(i%3-1)*12; p[i*3+2]=BZ+Math.sin(a)*r*0.45;
+      }
+      return p;
+    }
+    const DRONE_FMTS = [_droneRing(DN), _droneStar(DN), _droneHeart(DN)];
+    const drnPos = new Float32Array(DN * 3);
+    const drnCol = new Float32Array(DN * 3);
+    for (let i = 0; i < DN; i++) {
+      drnPos[i*3]=DRONE_FMTS[0][i*3]; drnPos[i*3+1]=DRONE_FMTS[0][i*3+1]; drnPos[i*3+2]=DRONE_FMTS[0][i*3+2];
+      const w = (i % 3 === 2);  // 1/3 white, 2/3 red
+      drnCol[i*3]=1; drnCol[i*3+1]=w?1:0.05; drnCol[i*3+2]=w?1:0.05;
+    }
+    const drnGeo = new THREE.BufferGeometry();
+    drnGeo.setAttribute('position', new THREE.BufferAttribute(drnPos, 3));
+    drnGeo.setAttribute('color',    new THREE.BufferAttribute(drnCol, 3));
+    const drnPoints = new THREE.Points(drnGeo,
+      new THREE.PointsMaterial({ size: isMobilePerf ? 3.5 : 5.5, vertexColors: true,
+        blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+        transparent: true, sizeAttenuation: true }));
+    drnPoints.visible = false;
+    scene.add(drnPoints);
+    let _dFmt = 0, _dTimer = 0;
+    function tickDroneShow(dt) {
+      if (!window.festiveActive()) { drnPoints.visible = false; return; }
+      drnPoints.visible = true;
+      _dTimer += dt;
+      if (_dTimer > 8.0) { _dTimer = 0; _dFmt = (_dFmt + 1) % DRONE_FMTS.length; }
+      const tgt = DRONE_FMTS[_dFmt], pos = drnGeo.attributes.position.array;
+      const lf = Math.min(1, 2.2 * dt);
+      for (let i = 0; i < DN * 3; i++) pos[i] += (tgt[i] - pos[i]) * lf;
+      drnGeo.attributes.position.needsUpdate = true;
+    }
+    window._tickDroneShow = tickDroneShow;
+  }
+
   // === v11: TINY MODE DIRECTIONAL ARROW ===
   // Shows for first 2 questions of every Tiny flight, points at correct gate.
   const tinyArrow = new THREE.Group();
@@ -7724,7 +7824,8 @@
     // Reframe the results screen as a celebration when a Tiny mission was won,
     // rather than the default "flight over" framing.
     const goHead = document.querySelector('#gameover h2');
-    if (goHead) goHead.textContent = won ? '🎉 MISSION COMPLETE!' : 'FLIGHT OVER';
+    const _fest = window.festiveActive && window.festiveActive();
+    if (goHead) goHead.textContent = won ? '🎉 MISSION COMPLETE!' : (_fest ? '🇸🇬 NATIONAL DAY FLIGHT' : 'FLIGHT OVER');
     game.state = 'gameover';
     game.zoomActive = false;  // v13: clean up any active ZOOOM
     game.zoomCharge = 0;
@@ -7771,6 +7872,23 @@
         vs.style.display = 'none';
       }
     }
+    // v19 Part 2 Leg 3: National Day Honour-Roll
+    const hr = document.getElementById('nd-honour-roll');
+    if (hr) {
+      if (window.festiveActive && window.festiveActive()) {
+        document.getElementById('hr-best-score').textContent  = game.bestScore;
+        document.getElementById('hr-best-streak').textContent = '×' + game.bestStreak;
+        document.getElementById('hr-correct').textContent     = game.totalCorrect;
+        document.getElementById('hr-flights').textContent     = totalFlights;
+        document.getElementById('hr-sunset').textContent      = isUnlocked('sunset') ? '🌅 ON' : '🔒';
+        document.getElementById('hr-plane').textContent       = PLANE_TIER_LABELS[getPlaneTierForStreak(game.bestStreak)] || 'TRAINER';
+        document.getElementById('hr-footer').textContent      = (Settings.singlish && game.bestStreak >= 20) ? 'Shiok lah — solid air ace! 🏆' : 'Majulah! 🇸🇬';
+        hr.classList.remove('intro'); void hr.offsetWidth; hr.classList.add('intro');
+        hr.style.display = 'block';
+      } else {
+        hr.style.display = 'none';
+      }
+    }
     document.getElementById('gameover').classList.add('show');
     Object.keys(keys).forEach(k => keys[k] = false);
     document.querySelectorAll('.dbtn.active').forEach(b => b.classList.remove('active'));
@@ -7799,14 +7917,18 @@
     track('share_score');   // Part F: button tap, one-shot
     // Always share the canonical play URL — never a local file:// path or query-string variant.
     const url = 'https://mli3w.github.io/top-sum/';
+    const festive = window.festiveActive && window.festiveActive();
     // Short text for the native share sheet (which appends the url itself)
-    const shortText = `I've scored ${game.score} on Top Sum 🛩️ — math flight over Marina Bay. Streak ×${game.bestStreak}, ${game.totalCorrect} correct. Try it:`;
+    const shortText = festive
+      ? `🇸🇬 My National Day honour roll on Top Sum: best ${game.bestScore}, streak ×${game.bestStreak}, ${totalFlights} flights over Marina Bay. Majulah! Try it:`
+      : `I've scored ${game.score} on Top Sum 🛩️ — math flight over Marina Bay. Streak ×${game.bestStreak}, ${game.totalCorrect} correct. Try it:`;
     // Combined text for clipboard fallback (must include the url so people can click through)
-    const fullText = `I've scored ${game.score} on Top Sum 🛩️ — math flight over Marina Bay. Streak ×${game.bestStreak}, ${game.totalCorrect} correct. Try it: ${url}`;
+    const fullText = shortText + ' ' + url;
+    const shareTitle = festive ? 'Top Sum · National Day Honour Roll' : 'Top Sum · Math Flight';
 
     if (navigator.share) {
       navigator.share({
-        title: 'Top Sum · Math Flight',
+        title: shareTitle,
         text: shortText,
         url: url
       }).catch(() => {
@@ -7930,6 +8052,7 @@
     tickFireworks(rawDt, t);
     tickSpectra(rawDt, t);
     tickSearchlights(rawDt, t);
+    if (window._tickDroneShow) window._tickDroneShow(rawDt);
     if (window._waterNormalTex) {
       window._waterNormalTex.offset.x += rawDt * 0.010;
       window._waterNormalTex.offset.y += rawDt * 0.007;
@@ -7940,6 +8063,7 @@
     if (game.state !== 'playing') {
       camera.position.set(Math.cos(t * 0.1) * 380, 200, Math.sin(t * 0.1) * 380 + 20);
       camera.lookAt(-15, 60, 25);   // v16: rebuilt bay center
+      if (typeof updateLandmarkCaptions === 'function') updateLandmarkCaptions(t);
       return;
     }
 
@@ -8226,6 +8350,42 @@
     tickTinyArrow(t);
   }
 
+  // === v19 Part 2 Leg 2: LANDMARK CAPTIONS (festive idle-orbit) ===
+  // One DOM div per landmark; shown when the orbit camera bearing sweeps past it.
+  // Angle check: landmark angle ≈ camera forward angle (t*0.1 + π). Zero draw calls.
+  const LM_DATA = [
+    { name: 'Marina Bay Sands',   x:  164, z:  100 },
+    { name: 'ArtScience Museum',  x:  105, z:  -42 },
+    { name: 'Helix Bridge',       x:  167, z: -114 },
+    { name: 'Singapore Flyer',    x:  310, z: -215 },
+    { name: 'NS Square',          x:  105, z: -192 },
+    { name: 'Esplanade',          x: -105, z: -240 },
+    { name: 'The Merlion',        x: -172, z:  -75 },
+    { name: 'Supertree Grove',    x:  295, z:  240 },
+  ];
+  const lmContainer = document.getElementById('lm-captions');
+  const lmEls = LM_DATA.map(lm => {
+    const el = document.createElement('div');
+    el.className = 'lm-cap';
+    el.textContent = lm.name;
+    lmContainer.appendChild(el);
+    return el;
+  });
+  function updateLandmarkCaptions(t) {
+    const fest = window.festiveActive && window.festiveActive();
+    const idle = (game.state === 'idle');
+    if (!fest || !idle) {
+      lmEls.forEach(el => el.classList.remove('vis'));
+      return;
+    }
+    const fwdAngle = t * 0.1 + Math.PI;  // camera forward orbit angle
+    LM_DATA.forEach((lm, i) => {
+      const lmAngle = Math.atan2(lm.z, lm.x);
+      let diff = ((lmAngle - fwdAngle) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+      lmEls[i].classList.toggle('vis', Math.abs(diff) < 0.22);
+    });
+  }
+
   function loop() {
     requestAnimationFrame(loop);
     const now = performance.now();
@@ -8274,6 +8434,7 @@
      Token shared with another mli3w.github.io project — both sites report
      under one property (same hostname); read this game's traffic via the
      per-path view (/top-sum/). Setup notes in analytics/README.md. -->
+<div id="lm-captions"></div>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"f5d503d3f11044ddbab4eb59adf8e9a7"}'></script>
 </body>
 </html>
