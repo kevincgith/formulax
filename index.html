@@ -1172,6 +1172,18 @@
   @keyframes ndiReady { 0%,100%{transform:scale(1); opacity:.82;} 50%{transform:scale(1.07); opacity:1;} }
   @keyframes ndiGo { 0%{transform:scale(.3); opacity:0;} 58%{transform:scale(1.28); opacity:1;} 100%{transform:scale(1);} }
 
+  /* v19.x: mid-flight reverse-course prompt */
+  #rev-prompt { position:fixed; left:50%; bottom:92px; transform:translate(-50%,10px);
+    z-index:14; display:none; opacity:0; pointer-events:none;
+    font-family:var(--font-ui); font-weight:700; font-size:clamp(13px,2.6vw,16px);
+    color:#08101c; background:linear-gradient(180deg,#ffe9aa,var(--gold));
+    border:none; border-radius:24px; padding:10px 22px; cursor:pointer;
+    box-shadow:0 4px 18px rgba(0,0,0,0.35);
+    transition:opacity .3s ease, transform .3s ease; animation:revPulse 1.5s ease-in-out infinite; }
+  #rev-prompt.show { display:block; opacity:1; pointer-events:auto; transform:translate(-50%,0); }
+  @keyframes revPulse { 0%,100%{box-shadow:0 4px 18px rgba(0,0,0,0.35);}
+    50%{box-shadow:0 4px 26px var(--gold-line);} }
+
   /* Segmented controls: real inputs stay (Settings JS reads name/value/id),
      visually hidden; the sibling <span> is the 44px+ pill. */
   .seg {
@@ -2430,6 +2442,9 @@
     </div>
   </div>
 </div>
+
+<!-- v19.x: mid-flight reverse prompt (shown on an open stretch after a few laps) -->
+<button id="rev-prompt" type="button">↩ Reverse course &nbsp;(R)</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
         onerror="document.getElementById('error-fallback').classList.add('show'); document.getElementById('boot').classList.add('hide');"></script>
@@ -4951,8 +4966,14 @@
   try { _revPath = new URLSearchParams(location.search).get('rev') === '1'; } catch (e) {}
   if (_revPath) pathPoints.reverse();
   // Tension 0.5 = standard centripetal Catmull-Rom (smoother than the old 0.4).
-  const path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
-  const pathLength = path.getLength();
+  // `let` (not const): the mid-flight REVERSE maneuver rebuilds these from the
+  // reversed pathPoints. Every closure reads the variable, so the swap is global.
+  let path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
+  let pathLength = path.getLength();
+  // Set true once the mid-flight REVERSE maneuver has flipped the loop. Declared
+  // here (before getPathFrame / rebuildVarTube run at build time) so neither
+  // touches the `game` object, which isn't declared until much later.
+  let _reversedFlight = false;
   const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
   // === v18: PER-LAP PATH VARIATION ===
@@ -5023,7 +5044,9 @@
     // v18: apply this lap's variation shift (lateral along right, vertical
     // along world-y — matching the offline verification harness).
     const d = varDir || varDirAt(t);
-    const w = varWeight(t);
+    // Once the flight has been reversed mid-air, the per-lap variation zones
+    // (keyed to the forward route) are stale — disable the shift entirely.
+    const w = _reversedFlight ? 0 : varWeight(t);
     if (w > 0) {
       if (d[0]) pos.addScaledVector(right, d[0] * w);
       if (d[1]) pos.y += d[1] * w;
@@ -5038,7 +5061,7 @@
   timeAware.pathTubeMat = pathTubeMat;
   let pathTubeMesh = null;
   function rebuildVarTube() {
-    const dir = VAR_DIRS[varState.idxNow];
+    const dir = _reversedFlight ? [0, 0] : VAR_DIRS[varState.idxNow];
     const NS = isMobilePerf ? 96 : 160;
     const pts = [];
     for (let i = 0; i < NS; i++) pts.push(getPathFrame(i / NS, dir).pos);
@@ -5053,6 +5076,108 @@
     }
   }
   rebuildVarTube();
+
+  // === v19.x: MID-FLIGHT REVERSE MANEUVER ===
+  // After a few laps, on the open opening-vista stretch, the player can flip the
+  // whole tour. The plane pulls up into a vertical half-loop; at the top the path
+  // curve is swapped for its reverse (the same swap ?rev=1 does), and pathT is
+  // re-anchored to the same physical point by a nearest-sample search — so every
+  // forward-assuming system (gates / LOS / cadence) keeps working unchanged. It's
+  // simply "forward" along a reversed loop now.
+  const REV_DUR = 2.5;            // total maneuver seconds
+  const REV_P1 = 0.55;           // climb+loop fraction; remainder is the descent
+  const REV_R = 46;              // loop radius (top sits ~2R above the path)
+  const REV_LAP_MIN = 2;         // offered only after this many laps (spec wanted ~4; 2 is more reachable)
+  const REV_WIN = [0.02, 0.10];  // pathT window — the open south-shore opening vista
+  const _revBase = { pos: new THREE.Vector3(), tan: new THREE.Vector3(), up: new THREE.Vector3() };
+  const _revL = new THREE.Vector3(), _revU = new THREE.Vector3(), _revP = new THREE.Vector3();
+
+  function rebuildPathCurve() {
+    path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
+    pathLength = path.getLength();
+  }
+  function revEligible() {
+    return game.state === 'playing' && !game.reversing && !game.zoomActive && !_reversedFlight
+      && (game.lap || 0) >= REV_LAP_MIN && game.pathT >= REV_WIN[0] && game.pathT <= REV_WIN[1];
+  }
+  function startReverse() {
+    if (!revEligible()) return;
+    const f = getPathFrame(game.pathT);
+    _revBase.pos.copy(f.pos); _revBase.tan.copy(f.tan); _revBase.up.copy(f.up);
+    game.reversing = true;
+    game.reverseT = 0;
+    game.reverseSwapped = false;
+    clearGates();
+    game.question = null;
+    game.answered = true;          // suspend question scheduling during the loop
+    hideReversePrompt();
+    Sound.click();
+  }
+  // Drive the plane + camera through the loop; called from the playing update.
+  function tickReverse(dt) {
+    game.reverseT += dt;
+    const p = Math.min(1, game.reverseT / REV_DUR);
+    let lookDir, upDir, pos;
+    if (p < REV_P1) {
+      // Phase 1: vertical half-loop on the frozen base frame, θ 0 → π
+      const th = (p / REV_P1) * Math.PI, s = Math.sin(th), c = Math.cos(th);
+      lookDir = _revL.copy(_revBase.tan).multiplyScalar(c).addScaledVector(_revBase.up, s);
+      upDir   = _revU.copy(_revBase.up).multiplyScalar(c).addScaledVector(_revBase.tan, -s);
+      pos     = _revP.copy(_revBase.pos).addScaledVector(_revBase.tan, REV_R * s)
+                  .addScaledVector(_revBase.up, REV_R * (1 - c));
+    } else {
+      if (!game.reverseSwapped) {
+        // Swap to the reversed curve at the top of the loop, then find the u on
+        // the new curve nearest the frozen physical point so nothing teleports.
+        pathPoints.reverse();
+        rebuildPathCurve();
+        let best = 0, bestD = Infinity;
+        for (let i = 0; i <= 360; i++) {
+          const u = i / 360;
+          const d = path.getPointAt(u).distanceToSquared(_revBase.pos);
+          if (d < bestD) { bestD = d; best = u; }
+        }
+        game.pathT = best;
+        _reversedFlight = !_reversedFlight;
+        game.reverseSwapped = true;
+        rebuildVarTube();
+      }
+      // Phase 2: descend from the loop top to the reversed on-path frame, rolling
+      // upright around the (now reversed) heading.
+      const p2 = (p - REV_P1) / (1 - REV_P1), e = p2 * p2 * (3 - 2 * p2);
+      const nf = getPathFrame(game.pathT);
+      pos = _revP.copy(_revBase.pos).addScaledVector(_revBase.up, REV_R * 2).lerp(nf.pos, e);
+      lookDir = _revL.copy(_revBase.tan).multiplyScalar(-1).lerp(nf.tan, e).normalize();
+      upDir = _revU.copy(nf.up).applyAxisAngle(lookDir, (1 - e) * Math.PI);
+    }
+    player.position.copy(pos);
+    player.up.copy(upDir);
+    player.lookAt(pos.clone().add(lookDir));
+    const camDesired = pos.clone().addScaledVector(lookDir, -16).addScaledVector(upDir, 5);
+    camera.position.lerp(camDesired, Math.min(1, dt * 6));
+    camera.lookAt(pos.clone().addScaledVector(lookDir, 18));
+    if (p >= 1) {
+      game.reversing = false;
+      game.questionCooldown = 0.5;   // breathe, then resume questions
+      game.answered = true;
+    }
+  }
+  function showReversePrompt() {
+    const el = document.getElementById('rev-prompt');
+    if (el) el.classList.add('show');
+  }
+  function hideReversePrompt() {
+    const el = document.getElementById('rev-prompt');
+    if (el) el.classList.remove('show');
+  }
+  function updateReversePrompt() {
+    if (revEligible()) showReversePrompt(); else hideReversePrompt();
+  }
+  {
+    const _revBtn = document.getElementById('rev-prompt');
+    if (_revBtn) _revBtn.addEventListener('click', () => startReverse());
+    addEventListener('keydown', e => { if (e.code === 'KeyR') startReverse(); });
+  }
 
   // === PLAYER PLANES (5 tiers, swap based on streak) ===
   // Each tier has a distinct silhouette, color palette, and signature
@@ -7880,6 +8005,10 @@
     game.lives = START_LIVES;
     game.score = 0; game.streak = 0; game.bestStreak = 0; game.totalCorrect = 0;
     game.invuln = 0; game.pathT = 0;
+    // v19.x: a flight always starts forward — undo any leftover mid-flight reverse
+    if (_reversedFlight) { pathPoints.reverse(); rebuildPathCurve(); _reversedFlight = false; rebuildVarTube(); }
+    game.lap = 0; game.reversing = false; game.reverseSwapped = false;
+    hideReversePrompt();
     game.missionWon = false;     // Tiny mission win flag (reset each flight)
     reviewQueue = [];            // adaptive resurfacing is flight-scoped
     // v18: every flight starts the lap-variation sequence from the top
@@ -8188,8 +8317,14 @@
     // (water + boats keep animating above so the world feels alive, not dead).
     if (game.paused) return;
 
+    // v19.x: mid-flight reverse — the loop maneuver owns the plane/camera and
+    // suspends the path advance + gates until it completes.
+    if (game.reversing) { tickReverse(rawDt); return; }
+
     const prevT = game.pathT;
     game.pathT = (game.pathT + (game.speed / pathLength) * dt) % 1;
+    if (game.pathT < prevT) game.lap = (game.lap || 0) + 1;   // wrapped past 0 → new lap
+    updateReversePrompt();
 
     // v18: lap-variation re-roll on crossing the mid-skim switch point
     // (w=0 there, so the shifted world doesn't jump under the plane).
