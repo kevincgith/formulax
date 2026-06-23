@@ -5082,8 +5082,13 @@
   const REV_R = 46;              // loop radius (top sits ~2R above the path)
   const REV_REARM = 2;           // laps required since the last reverse (re-armable both ways)
   const REV_WIN = [0.02, 0.10];  // forward→reverse: the open south-shore opening vista (pathT)
-  const REVBACK_POS = [160, -330]; // reverse-back trigger: just past the Singapore Flyer bend
-  const REVBACK_R = 95;          // world-XZ radius around that point (loop clears the wheel + Suntec)
+  // Reverse-back trigger sits in the heart of Marina Bay (Helix → ArtScience
+  // stretch). On the clockwise route this is reached AFTER the Flyer bend, so by
+  // here the player has already toured the CBD and is over the bay with MBS /
+  // ArtScience in view — a natural "seen the highlights, flip back" moment. Open
+  // water; the loop tops out ~y190, well above ArtScience and the low Helix.
+  const REVBACK_POS = [155, -75];
+  const REVBACK_R = 75;          // world-XZ radius around that point
   const _revBase = { pos: new THREE.Vector3(), tan: new THREE.Vector3(), up: new THREE.Vector3() };
   const _revL = new THREE.Vector3(), _revU = new THREE.Vector3(), _revP = new THREE.Vector3();
 
