@@ -4917,6 +4917,11 @@
     new THREE.Vector3(-238,  60,  150),  // P16 canyon south end, begin the curve
     new THREE.Vector3(-205,  64,  250)   // P17 low through MBFC, SW corner
   ];
+  // === TEST (?rev=1): fly the loop in REVERSE to sightsee the map the other way.
+  // Gated behind a URL param so the default verified route is untouched. ===
+  let _revPath = false;
+  try { _revPath = new URLSearchParams(location.search).get('rev') === '1'; } catch (e) {}
+  if (_revPath) pathPoints.reverse();
   // Tension 0.5 = standard centripetal Catmull-Rom (smoother than the old 0.4).
   const path = new THREE.CatmullRomCurve3(pathPoints, true, 'catmullrom', 0.5);
   const pathLength = path.getLength();
@@ -4934,7 +4939,9 @@
   // the previous lap's direction. Offline-verified for all four dirs:
   // shifted centerline and gate reach (±23.5) contact nothing; the
   // drift-envelope contact set is unchanged from v17.
-  const VAR_DIRS = [[10, 0], [-10, 0], [0, 7], [0, -6]]; // right, left, up, down
+  const VAR_DIRS = _revPath
+    ? [[0, 0], [0, 0], [0, 0], [0, 0]]      // TEST(?rev=1): no per-lap shift; reversed zones would mis-align
+    : [[10, 0], [-10, 0], [0, 7], [0, -6]]; // right, left, up, down
   const varState = { lap: 0, idxNow: 0, idxNext: 2 };
   function varHash(k) { return (Math.imul(k, 2654435761) >>> 0) % 3; }
   function varAdvance() {
