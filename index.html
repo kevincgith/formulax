@@ -1146,17 +1146,19 @@
     flex-direction:column; align-items:center; justify-content:center; gap:20px;
     background:radial-gradient(ellipse at center, rgba(8,16,28,0.32), transparent 68%); }
   #nd-intro.show { display:flex; }
+  /* Token-driven so it themes itself: gold normally, red/white under body.festive
+     (which remaps the --gold family). */
   .ndi-banner { font-family:var(--font-display); font-weight:900;
     font-size:clamp(20px,5.5vw,46px); letter-spacing:0.06em; color:#fff;
     padding:10px 28px; border-radius:16px;
-    background:linear-gradient(180deg, var(--sg-red), #a81322);
-    box-shadow:0 0 32px rgba(238,37,54,0.5);
+    background:linear-gradient(180deg, var(--gold), var(--gold-deep));
+    box-shadow:0 0 32px var(--gold);
     animation:ndiBanner 2.4s ease-out both; }
   .ndi-count { font-family:var(--font-display); font-weight:900; line-height:1;
-    font-size:clamp(54px,16vw,140px); color:#fff;
-    text-shadow:0 0 26px rgba(238,37,54,0.85), 0 4px 0 #a81322; }
+    font-size:clamp(54px,16vw,140px); color:var(--gold-bright);
+    text-shadow:0 0 26px var(--gold), 0 4px 0 var(--gold-deep); }
   .ndi-count.ready { animation:ndiReady 1.3s ease-in-out infinite; }
-  .ndi-count.go { color:var(--sg-red); text-shadow:0 0 30px rgba(255,255,255,0.9), 0 4px 0 #fff;
+  .ndi-count.go { color:var(--gold); text-shadow:0 0 30px var(--gold-bright), 0 4px 0 var(--gold-bright);
     animation:ndiGo 0.7s cubic-bezier(.2,1.4,.3,1) both; }
   @keyframes ndiBanner { 0%{opacity:0; transform:translateY(-40px) scale(.9);}
     14%{opacity:1; transform:translateY(0) scale(1);} 84%{opacity:1;} 100%{opacity:0; transform:scale(1.05);} }
@@ -5078,8 +5080,10 @@
   const REV_DUR = 2.5;            // total maneuver seconds
   const REV_P1 = 0.55;           // climb+loop fraction; remainder is the descent
   const REV_R = 46;              // loop radius (top sits ~2R above the path)
-  const REV_LAP_MIN = 2;         // offered only after this many laps (spec wanted ~4; 2 is more reachable)
-  const REV_WIN = [0.02, 0.10];  // pathT window — the open south-shore opening vista
+  const REV_REARM = 2;           // laps required since the last reverse (re-armable both ways)
+  const REV_WIN = [0.02, 0.10];  // forward→reverse: the open south-shore opening vista (pathT)
+  const REVBACK_POS = [160, -330]; // reverse-back trigger: just past the Singapore Flyer bend
+  const REVBACK_R = 95;          // world-XZ radius around that point (loop clears the wheel + Suntec)
   const _revBase = { pos: new THREE.Vector3(), tan: new THREE.Vector3(), up: new THREE.Vector3() };
   const _revL = new THREE.Vector3(), _revU = new THREE.Vector3(), _revP = new THREE.Vector3();
 
@@ -5088,8 +5092,16 @@
     pathLength = path.getLength();
   }
   function revEligible() {
-    return game.state === 'playing' && !game.reversing && !game.zoomActive && !_reversedFlight
-      && (game.lap || 0) >= REV_LAP_MIN && game.pathT >= REV_WIN[0] && game.pathT <= REV_WIN[1];
+    if (game.state !== 'playing' || game.reversing || game.zoomActive) return false;
+    // re-armable: at least REV_REARM laps since the previous flip, either direction
+    if ((game.lap || 0) < (game.reverseLap || 0) + REV_REARM) return false;
+    if (!_reversedFlight) {
+      // forward (anti-clockwise) → reverse: the open south-shore opening vista
+      return game.pathT >= REV_WIN[0] && game.pathT <= REV_WIN[1];
+    }
+    // reversed (clockwise) → reverse back: near the Singapore Flyer bend
+    const f = getPathFrame(game.pathT);
+    return Math.hypot(f.pos.x - REVBACK_POS[0], f.pos.z - REVBACK_POS[1]) < REVBACK_R;
   }
   function startReverse() {
     if (!revEligible()) return;
@@ -5098,6 +5110,7 @@
     game.reversing = true;
     game.reverseT = 0;
     game.reverseSwapped = false;
+    game.reverseLap = game.lap || 0;   // re-arm the next flip 2 laps from now
     clearGates();
     game.question = null;
     game.answered = true;          // suspend question scheduling during the loop
@@ -5155,7 +5168,9 @@
   }
   function showReversePrompt() {
     const el = document.getElementById('rev-prompt');
-    if (el) el.classList.add('show');
+    if (!el) return;
+    el.textContent = _reversedFlight ? '↩ Reverse back  (R)' : '↩ Reverse course  (R)';
+    el.classList.add('show');
   }
   function hideReversePrompt() {
     const el = document.getElementById('rev-prompt');
@@ -7998,7 +8013,7 @@
     game.invuln = 0; game.pathT = 0;
     // v19.x: a flight always starts forward — undo any leftover mid-flight reverse
     if (_reversedFlight) { pathPoints.reverse(); rebuildPathCurve(); _reversedFlight = false; rebuildVarTube(); }
-    game.lap = 0; game.reversing = false; game.reverseSwapped = false;
+    game.lap = 0; game.reverseLap = 0; game.reversing = false; game.reverseSwapped = false;
     hideReversePrompt();
     game.missionWon = false;     // Tiny mission win flag (reset each flight)
     reviewQueue = [];            // adaptive resurfacing is flight-scoped
@@ -8036,23 +8051,25 @@
       game.questionCooldown = 2.0;
       game.answered = true;  // prevents collision with old gates; newQuestion fires after cooldown
       setTimeout(() => ob.classList.remove('show'), 2000);
-    } else if (festiveActive()) {
-      // NDP: banner + READY..GO countdown builds anticipation, then the first
-      // question drops on GO. Reuses the onboarding delay mechanism exactly.
-      showNdpIntro();
+    } else {
+      // READY..GO countdown builds anticipation before the first question drops.
+      // Reuses the onboarding delay mechanism exactly. Colors theme themselves
+      // (gold normally, red/white under festive); the National Day banner only
+      // shows on festive flights.
+      showFlightIntro();
       game.questionCooldown = 2.6;
       game.answered = true;
-    } else {
-      newQuestion();
     }
   }
   window.startGame = startGame;
 
-  // v19.x: National Day flight-start intro — banner + READY..GO countdown.
-  function showNdpIntro() {
+  // v19.x: flight-start intro — READY..GO countdown (+ NDP banner when festive).
+  function showFlightIntro() {
     const ov = document.getElementById('nd-intro');
     const c  = document.getElementById('ndi-count');
     if (!ov || !c) return;
+    const banner = ov.querySelector('.ndi-banner');
+    if (banner) banner.style.display = (window.festiveActive && window.festiveActive()) ? 'block' : 'none';
     c.textContent = 'READY'; c.className = 'ndi-count ready';
     ov.classList.add('show');
     setTimeout(() => { c.textContent = 'GO!'; c.className = 'ndi-count go'; Sound.click(); }, 1300);
