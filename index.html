@@ -1141,15 +1141,6 @@
   .nd-hr-foot  { font-size: clamp(10px,2vw,12px); color: var(--gold-bright); opacity: 0.9; }
   @keyframes ndHrIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
   #nd-honour-roll.intro { animation: ndHrIn 280ms ease-out both; }
-  /* v19 Part 2 Leg 2: Landmark captions — festive idle-orbit overlay */
-  #lm-captions { position:fixed; inset:0; pointer-events:none; z-index:12; }
-  .lm-cap { position:absolute; left:50%; bottom:28%; transform:translate(-50%,0);
-    font-family:var(--font-display); font-size:clamp(11px,2.4vw,15px); letter-spacing:0.10em;
-    color:var(--gold-bright); background:rgba(0,0,0,0.45); border:1px solid var(--gold-line);
-    border-radius:20px; padding:5px 16px; white-space:nowrap;
-    opacity:0; transition:opacity 0.5s ease; pointer-events:none; }
-  .lm-cap.vis { opacity:1; }
-
   /* v19.x: NDP flight-start intro — National Day banner + READY..GO countdown */
   #nd-intro { position:fixed; inset:0; z-index:30; display:none; pointer-events:none;
     flex-direction:column; align-items:center; justify-content:center; gap:20px;
@@ -8303,7 +8294,6 @@
     tickSpectra(rawDt, t);
     tickSearchlights(rawDt, t);
     if (window._tickDroneShow) window._tickDroneShow(rawDt, t);
-    if (typeof updateLandmarkCaptions === 'function') updateLandmarkCaptions(t);
     tickBeacons(t);      // Part C4: aircraft-warning blinkers
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 
@@ -8600,60 +8590,6 @@
 
     // v11: tiny mode directional arrow (level 1, first 2 questions)
     tickTinyArrow(t);
-  }
-
-  // === v19 Part 2 Leg 2: LANDMARK CAPTIONS (festive idle-orbit) ===
-  // One DOM div per landmark; shown when the orbit camera bearing sweeps past it.
-  // Angle check: landmark angle ≈ camera forward angle (t*0.1 + π). Zero draw calls.
-  const LM_DATA = [
-    { name: 'Marina Bay Sands',   x:  164, z:  100 },
-    { name: 'ArtScience Museum',  x:  105, z:  -42 },
-    { name: 'Helix Bridge',       x:  167, z: -114 },
-    { name: 'Singapore Flyer',    x:  310, z: -215 },
-    { name: 'NS Square',          x:  105, z: -192 },
-    { name: 'Esplanade',          x: -105, z: -240 },
-    { name: 'The Merlion',        x: -172, z:  -75 },
-    { name: 'Supertree Grove',    x:  295, z:  240 },
-  ];
-  // Create the overlay container in JS so it never depends on DOM parse order
-  // (this script runs synchronously mid-document — elements declared after it
-  // don't exist yet, which is exactly what broke boot on the first cut).
-  let lmContainer = document.getElementById('lm-captions');
-  if (!lmContainer) {
-    lmContainer = document.createElement('div');
-    lmContainer.id = 'lm-captions';
-    document.body.appendChild(lmContainer);
-  }
-  const lmEls = LM_DATA.map(lm => {
-    const el = document.createElement('div');
-    el.className = 'lm-cap';
-    el.textContent = lm.name;
-    lmContainer.appendChild(el);
-    return el;
-  });
-  function updateLandmarkCaptions(t) {
-    const fest = window.festiveActive && window.festiveActive();
-    const idle = (game.state === 'idle');
-    if (!fest || !idle) {
-      lmEls.forEach(el => el.classList.remove('vis'));
-      return;
-    }
-    // Camera-relative bearing: compare the camera→landmark direction against the
-    // camera's forward (camera→lookAt) direction in the horizontal plane. Using
-    // true parallax (not bearing-from-origin) separates near-collinear landmarks
-    // like Helix vs Flyer by distance. Show only the SINGLE most-centred landmark
-    // (argmin), gated so a caption never names something well off to the side —
-    // which also kills the old "3 captions stacked on one pixel" bug.
-    const cx = Math.cos(t * 0.1) * 380, cz = Math.sin(t * 0.1) * 380 + 20;
-    const fwd = Math.atan2(25 - cz, -15 - cx);
-    let best = -1, bestAbs = 0.38;   // gate ≈ 22°
-    LM_DATA.forEach((lm, i) => {
-      const ang = Math.atan2(lm.z - cz, lm.x - cx);
-      let diff = ((ang - fwd) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
-      diff = Math.abs(diff);
-      if (diff < bestAbs) { bestAbs = diff; best = i; }
-    });
-    lmEls.forEach((el, i) => el.classList.toggle('vis', i === best));
   }
 
   function loop() {
