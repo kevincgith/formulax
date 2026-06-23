@@ -1150,6 +1150,28 @@
     opacity:0; transition:opacity 0.5s ease; pointer-events:none; }
   .lm-cap.vis { opacity:1; }
 
+  /* v19.x: NDP flight-start intro — National Day banner + READY..GO countdown */
+  #nd-intro { position:fixed; inset:0; z-index:30; display:none; pointer-events:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:20px;
+    background:radial-gradient(ellipse at center, rgba(8,16,28,0.32), transparent 68%); }
+  #nd-intro.show { display:flex; }
+  .ndi-banner { font-family:var(--font-display); font-weight:900;
+    font-size:clamp(20px,5.5vw,46px); letter-spacing:0.06em; color:#fff;
+    padding:10px 28px; border-radius:16px;
+    background:linear-gradient(180deg, var(--sg-red), #a81322);
+    box-shadow:0 0 32px rgba(238,37,54,0.5);
+    animation:ndiBanner 2.4s ease-out both; }
+  .ndi-count { font-family:var(--font-display); font-weight:900; line-height:1;
+    font-size:clamp(54px,16vw,140px); color:#fff;
+    text-shadow:0 0 26px rgba(238,37,54,0.85), 0 4px 0 #a81322; }
+  .ndi-count.ready { animation:ndiReady 1.3s ease-in-out infinite; }
+  .ndi-count.go { color:var(--sg-red); text-shadow:0 0 30px rgba(255,255,255,0.9), 0 4px 0 #fff;
+    animation:ndiGo 0.7s cubic-bezier(.2,1.4,.3,1) both; }
+  @keyframes ndiBanner { 0%{opacity:0; transform:translateY(-40px) scale(.9);}
+    14%{opacity:1; transform:translateY(0) scale(1);} 84%{opacity:1;} 100%{opacity:0; transform:scale(1.05);} }
+  @keyframes ndiReady { 0%,100%{transform:scale(1); opacity:.82;} 50%{transform:scale(1.07); opacity:1;} }
+  @keyframes ndiGo { 0%{transform:scale(.3); opacity:0;} 58%{transform:scale(1.28); opacity:1;} 100%{transform:scale(1);} }
+
   /* Segmented controls: real inputs stay (Settings JS reads name/value/id),
      visually hidden; the sibling <span> is the 44px+ pill. */
   .seg {
@@ -2387,6 +2409,12 @@
       </div>
       <div class="onboard-text">FLY THROUGH GOLD!</div>
     </div>
+  </div>
+
+  <!-- v19.x: NDP flight-start intro (festive only) -->
+  <div id="nd-intro" aria-hidden="true">
+    <div class="ndi-banner">🇸🇬 NATIONAL DAY FLIGHT</div>
+    <div class="ndi-count" id="ndi-count">READY</div>
   </div>
 
   <div id="unlock-celebration" role="dialog" aria-modal="true" aria-label="Unlock celebration">
@@ -7888,11 +7916,28 @@
       game.questionCooldown = 2.0;
       game.answered = true;  // prevents collision with old gates; newQuestion fires after cooldown
       setTimeout(() => ob.classList.remove('show'), 2000);
+    } else if (festiveActive()) {
+      // NDP: banner + READY..GO countdown builds anticipation, then the first
+      // question drops on GO. Reuses the onboarding delay mechanism exactly.
+      showNdpIntro();
+      game.questionCooldown = 2.6;
+      game.answered = true;
     } else {
       newQuestion();
     }
   }
   window.startGame = startGame;
+
+  // v19.x: National Day flight-start intro — banner + READY..GO countdown.
+  function showNdpIntro() {
+    const ov = document.getElementById('nd-intro');
+    const c  = document.getElementById('ndi-count');
+    if (!ov || !c) return;
+    c.textContent = 'READY'; c.className = 'ndi-count ready';
+    ov.classList.add('show');
+    setTimeout(() => { c.textContent = 'GO!'; c.className = 'ndi-count go'; Sound.click(); }, 1300);
+    setTimeout(() => { ov.classList.remove('show'); }, 2350);
+  }
 
   function gameOver(won) {
     maybeUpdateBest();
