@@ -181,7 +181,7 @@ Top Sum is set over Marina Bay, and v15 leans in:
 
 ### 🚀 Progression & Unlocks
 - High-score persistence (localStorage, no signup)
-- **Sunset Mode** unlocks at 400 points, **Night Flight** at 1000 — each with a cinematic celebration
+- **Sunset Mode** unlocks at 400 points, **Night Flight** at 700 — each with a cinematic celebration
 - Streak milestones with visual rewards
 - Score sharing (Web Share API, with clipboard fallback)
 

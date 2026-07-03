@@ -15,7 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 |---|---|
 | GPU water waves, merged shophouse geometry, ring-buffer trails | Always (pure perf) |
 | SkyPark pool + parasols, river bridges, Lau Pa Sat, Marina One | Always (world accuracy) |
-| Night Flight | Time picker, unlocks at 1000 pts |
+| Night Flight | Time picker, unlocks at 700 pts |
 | Light-smear bay reflections | Sunset + Night |
 | Water firework glow | Whenever fireworks burst |
 | HDB flags, bunting, Float crowd, spectator boats, drone show, Red Lions, red/white takeover | Festive — **now default ON** |
@@ -23,7 +23,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ### Added
 - **Perpetual National Day mode** — `festiveActive()` now defaults ON instead of Aug-9-only. The 🎆 toggle still opts out persistently; `?ndp=0` joins `?ndp=1` as a session-only override for A/B comparison or a fast cut if the red/white look needs to come back down.
-- **Night Flight** — a third time-of-day preset: near-black blue sky, cool moonlight (the sun sprite doubles as the moon), city-carried lighting (windows at full glow, garland, supertrees, Helix, the SkyPark pool), bright-gold answer gates. Unlocks at 1000 points through the existing ladder with celebration + preview; every sunset-only ambient system (fireworks + streak finales, Spectra, beacon ceiling, traffic light-streams) widened to cover it.
+- **Night Flight** — a third time-of-day preset: near-black blue sky, cool moonlight (the sun sprite doubles as the moon), city-carried lighting (windows at full glow, garland, supertrees, Helix, the SkyPark pool), bright-gold answer gates. Unlocks at 700 points through the existing ladder with celebration + preview; every sunset-only ambient system (fireworks + streak finales, Spectra, beacon ceiling, traffic light-streams) widened to cover it.
 - **Fake skyline reflections** — three additive light-smear strips just off the CBD, MBS and Esplanade shores at sunset/night, with per-strip shimmer. One shared 128² canvas, three draw calls.
 - **The bay answers the sky** — while fireworks burst, the water emissive lerps toward the burst color from per-mode bases, so the NDP finale flushes the whole reservoir red.
 - **Singapore River bridges** — Cavenagh (pedestrian suspension posts), Anderson (white steel arches) and the Esplanade Bridge + Jubilee walk, all centred on the bumboat cruise line so the boat threads under them like the real river cruise.

@@ -2712,7 +2712,7 @@
     { id: 'sunset', name: 'Sunset Mode', icon: '🌅', threshold: 400,
       desc: 'Fly into the magic-hour sky.' },
     // v20: the parade setting — the city lights carry the whole scene
-    { id: 'night', name: 'Night Flight', icon: '🌃', threshold: 1000,
+    { id: 'night', name: 'Night Flight', icon: '🌃', threshold: 700,
       desc: 'The city lights come out.' }
   ];
   function isUnlocked(id) { return !!unlocks[id]; }
@@ -7928,16 +7928,26 @@
       showToast('🔒 Hit 400 to unlock SUNSET');
       return;
     }
-    // v20: cycle day → sunset → night → day, skipping locked tiers.
+    // v20: cycle day → sunset → night → day, skipping locked tiers. When a
+    // player cycles off sunset and Night isn't unlocked yet, surface a hint
+    // that it exists (and the score to reach it) instead of silently looping
+    // back to day — Night is easy to miss otherwise.
+    let hint = null;
     if (Settings.timeOfDay === 'day') Settings.timeOfDay = 'sunset';
-    else if (Settings.timeOfDay === 'sunset' && isUnlocked('night')) Settings.timeOfDay = 'night';
-    else Settings.timeOfDay = 'day';
+    else if (Settings.timeOfDay === 'sunset') {
+      if (isUnlocked('night')) Settings.timeOfDay = 'night';
+      else {
+        Settings.timeOfDay = 'day';
+        const n = UNLOCK_LADDER.find(u => u.id === 'night');
+        hint = '🔒 Hit ' + (n ? n.threshold : 700) + ' to unlock NIGHT';
+      }
+    } else Settings.timeOfDay = 'day';
     document.querySelectorAll('input[name=timeofday]').forEach(r => r.checked = (r.value === Settings.timeOfDay));
     Settings.save();
     Settings.updateBadges();
     applyTimeOfDay();
     if (Settings.timeOfDay === 'sunset') markSunsetUsed();
-    showToast('TIME: ' + (Settings.timeOfDay === 'night' ? 'NIGHT' : (Settings.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY')));
+    showToast(hint || ('TIME: ' + (Settings.timeOfDay === 'night' ? 'NIGHT' : (Settings.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY'))));
   }
   function toggleControlStyle() {
     Settings.control = (Settings.control === 'joystick') ? 'dpad' : 'joystick';
