@@ -1,7 +1,7 @@
 # ✈️ TOP SUM · Math Flight Over Marina Bay
 
-> A free arcade-style math flight game for kids.
-> Learn by flying through the correct answer.
+> A free arcade-style math flight game over Marina Bay — for kids and grown-ups alike.
+> Fly through the right answer, chain streaks into flow, challenge a friend.
 
 🌐 **Play instantly in your browser:**
 👉 https://mli3w.github.io/top-sum/
