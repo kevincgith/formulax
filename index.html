@@ -1421,6 +1421,29 @@
   }
   #title .best-pill.show { display: block; }
 
+  /* v19.x: National Day countdown chip — appears in the ~6-week run-up to
+     Aug 9 and on the day itself. A tap previews National Day mode for this
+     session only (same semantics as ?ndp=1 — never written to storage). */
+  #title .ndp-countdown {
+    display: none;
+    margin-bottom: clamp(10px, 2.2vw, 14px);
+    padding: 7px 16px;
+    background: rgba(216, 35, 42, 0.16);
+    border: 1px solid rgba(255, 120, 130, 0.45);
+    border-radius: var(--r-pill);
+    font-size: clamp(11px, 2.4vw, 13px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffd9dc;
+    cursor: pointer;
+    font-family: inherit;
+    touch-action: manipulation;
+    transition: background 0.15s;
+  }
+  #title .ndp-countdown.show { display: block; }
+  #title .ndp-countdown:hover, #title .ndp-countdown:active { background: rgba(216, 35, 42, 0.3); }
+  #title .ndp-countdown:disabled { cursor: default; }
+
   /* 2×2 level grid — the real CTA, above the fold. All four gold-family so
      no single level reads as pre-selected. */
   .diff-row {
@@ -2294,6 +2317,8 @@
       </div>
     </div>
     <div class="topgun-subtitle">MATH FLIGHT · MARINA BAY</div>
+    <!-- v19.x: National Day countdown — populated at boot, hidden outside the run-up window -->
+    <button id="ndp-countdown" class="ndp-countdown" type="button"></button>
     <div class="best-pill" id="title-best">★ BEST: 0</div>
     <div class="title-unlock-hint" id="title-unlock-hint" style="display:none"></div>
 
@@ -7035,6 +7060,201 @@
     window._tickDroneShow = tickDroneShow;
   }
 
+  // === v19.x: RED LIONS PARACHUTE JUMP (FESTIVE) ===
+  // The other half of every NDP aerial display: a dark-green transport runs a
+  // straight pass high over the bay, the stick steps off trailing red smoke,
+  // freefalls, pops red canopies and steers down onto the Float platform —
+  // the real Red Lions landing point. Festive-only, day AND sunset (the
+  // parade jump is an evening one), roughly every 2 minutes, and purely
+  // decorative: no colliders, no gameplay interaction. ~30 draw calls while
+  // active, zero when idle; mobile drops to 4 jumpers + shorter smoke.
+  {
+    const RL_N = isMobilePerf ? 4 : 6;
+    const RL_TRAIL = isMobilePerf ? 34 : 54;
+    const TX = 105, TZ = -192;   // the Float platform (buildNSSquare anchor)
+    const LAND_Y = 6.9;          // platform top (y=6) + body half-height
+    const ALT = 405;             // drop altitude
+
+    const root = new THREE.Group();
+    root.visible = false;
+    scene.add(root);
+
+    // Transport — a stubby tactical lifter, local +X nose like the jets.
+    const transport = (function() {
+      const g = new THREE.Group();
+      const skin = new THREE.MeshPhongMaterial({ color: 0x5c6b5e, shininess: 30 });
+      const fuse = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.6, 26, 8), skin);
+      fuse.rotation.z = Math.PI / 2; g.add(fuse);
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 6), skin);
+      nose.position.x = 13; nose.scale.set(1.4, 1, 1); g.add(nose);
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(7, 0.5, 34), skin);
+      wing.position.set(1, 2.2, 0); g.add(wing);
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 5.5, 0.4), skin);
+      fin.position.set(-12, 3.4, 0); g.add(fin);
+      const tailplane = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.35, 12), skin);
+      tailplane.position.set(-12, 5.8, 0); g.add(tailplane);
+      root.add(g);
+      return g;
+    })();
+
+    // Jumpers: a tiny dark body + a red canopy rig (hidden in freefall) hung
+    // off four riser lines, plus a per-jumper smoke trail — the same
+    // shift-back line technique as the flypast contrails, tinted SG red.
+    const canopyGeo = new THREE.SphereGeometry(3.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
+    const canopyMat = new THREE.MeshPhongMaterial({ color: 0xd8232a, shininess: 18, side: THREE.DoubleSide });
+    const jBodyGeo = new THREE.BoxGeometry(0.9, 2.0, 0.9);
+    const jBodyMat = new THREE.MeshPhongMaterial({ color: 0x24282c });
+    const riserMat = new THREE.LineBasicMaterial({ color: 0x383430, transparent: true, opacity: 0.85 });
+    const jumpers = [];
+    for (let i = 0; i < RL_N; i++) {
+      const j = new THREE.Group();
+      j.add(new THREE.Mesh(jBodyGeo, jBodyMat));
+      const rig = new THREE.Group();               // canopy + risers swing as one
+      const can = new THREE.Mesh(canopyGeo, canopyMat);
+      can.position.y = 4.6; rig.add(can);
+      const rGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 2.6, 4.4,  0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3(-2.6, 4.4,  0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 0,   4.4,  2.6),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 0,   4.4, -2.6)
+      ]);
+      rig.add(new THREE.LineSegments(rGeo, riserMat));
+      rig.visible = false; j.add(rig);
+      j.visible = false; root.add(j);
+      const tp = new Float32Array(RL_TRAIL * 3);
+      const tc = new Float32Array(RL_TRAIL * 3);
+      for (let k = 0; k < RL_TRAIL; k++) {
+        const a = 1 - k / RL_TRAIL;
+        tc[k*3] = a; tc[k*3+1] = a * 0.16; tc[k*3+2] = a * 0.2;
+      }
+      const tGeo = new THREE.BufferGeometry();
+      tGeo.setAttribute('position', new THREE.BufferAttribute(tp, 3));
+      tGeo.setAttribute('color', new THREE.BufferAttribute(tc, 3));
+      tGeo.setDrawRange(0, 0);
+      const trail = new THREE.Line(tGeo, new THREE.LineBasicMaterial({
+        vertexColors: true, transparent: true, opacity: 0.85,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      root.add(trail);
+      jumpers.push({
+        g: j, rig, trail, tPos: tp, tCount: 0,
+        state: 0, vy: 0, hvx: 0, hvz: 0, exitAt: 0, deployY: 0, phaseT: 0,
+        // landing spots fan out across the 30-radius platform so nobody stacks
+        land: new THREE.Vector3(TX + (i - (RL_N - 1) / 2) * 5.5, LAND_Y, TZ + ((i * 37) % 13) - 6)
+      });
+    }
+
+    let active = false, nextAt = 40, startT = 0, dur = 0;
+    const _from = new THREE.Vector3(), _to = new THREE.Vector3(), _dir = new THREE.Vector3();
+
+    function plan(time) {
+      // A straight chord through the sky angled so the exit point sits short
+      // of the Float: freefall forward-carry delivers the stick roughly
+      // overhead and the canopies only steer the last stretch home.
+      const a = Math.random() * Math.PI * 2;
+      _dir.set(Math.cos(a), 0, Math.sin(a));
+      _from.set(TX, ALT, TZ).addScaledVector(_dir, -1150);
+      _to.set(TX, ALT, TZ).addScaledVector(_dir, 1250);
+      dur = 24; startT = time; active = true; root.visible = true;
+      transport.visible = true;
+      transport.rotation.y = Math.atan2(_dir.x, _dir.z) - Math.PI / 2;
+      jumpers.forEach((jp, i) => {
+        jp.state = 0;
+        jp.exitAt = startT + dur * 0.40 + i * 0.6;
+        jp.deployY = 195 + (i % 3) * 14;   // staggered pops read better
+        jp.tCount = 0;
+        jp.trail.geometry.setDrawRange(0, 0);
+        jp.trail.material.opacity = 0.85;
+        jp.trail.visible = true;
+        jp.g.visible = false;
+        jp.rig.visible = false;
+        jp.rig.scale.set(1, 1, 1);
+      });
+    }
+
+    function tick(dt, time) {
+      if (!festiveActive()) {
+        if (active) { active = false; root.visible = false; nextAt = time + 30; }
+        return;
+      }
+      if (!active) { if (time >= nextAt) plan(time); return; }
+      const u = (time - startT) / dur;
+      if (u <= 1) {
+        transport.position.lerpVectors(_from, _to, u);
+        transport.position.y += Math.sin(time * 1.2) * 0.6;
+      } else transport.visible = false;
+
+      let done = u > 1;
+      jumpers.forEach((jp, i) => {
+        if (jp.state === 4) return;
+        done = false;
+        if (jp.state === 0) {
+          if (time >= jp.exitAt && u <= 1) {
+            jp.state = 1;
+            jp.g.visible = true;
+            jp.g.position.copy(transport.position); jp.g.position.y -= 3;
+            jp.vy = -6;
+            const spd = _to.distanceTo(_from) / dur;
+            jp.hvx = _dir.x * spd; jp.hvz = _dir.z * spd;
+            if (i === 0 && game.state === 'playing') showToast('🪂 RED LIONS AWAY!');
+          }
+          return;
+        }
+        const p = jp.g.position;
+        if (jp.state === 1) {
+          // freefall: build toward terminal velocity, forward carry bleeds off
+          jp.vy += (-72 - jp.vy) * Math.min(1, dt * 1.4);
+          jp.hvx *= Math.max(0, 1 - dt * 0.75);
+          jp.hvz *= Math.max(0, 1 - dt * 0.75);
+          p.x += jp.hvx * dt; p.z += jp.hvz * dt; p.y += jp.vy * dt;
+          const arr = jp.tPos;
+          for (let k = RL_TRAIL - 1; k > 0; k--) {
+            arr[k*3] = arr[(k-1)*3]; arr[k*3+1] = arr[(k-1)*3+1]; arr[k*3+2] = arr[(k-1)*3+2];
+          }
+          arr[0] = p.x; arr[1] = p.y + 1; arr[2] = p.z;
+          if (jp.tCount < RL_TRAIL) jp.tCount++;
+          jp.trail.geometry.setDrawRange(0, jp.tCount);
+          jp.trail.geometry.attributes.position.needsUpdate = true;
+          if (p.y <= jp.deployY) { jp.state = 2; jp.rig.visible = true; jp.phaseT = time; }
+          return;
+        }
+        if (jp.state === 2) {
+          // under canopy: flare to a gentle sink, steer home, sway a little
+          jp.vy += (-10.5 - jp.vy) * Math.min(1, dt * 2.0);
+          p.y += jp.vy * dt;
+          const dx = jp.land.x - p.x, dz = jp.land.z - p.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.5) {
+            const spd = Math.min(24, 4 + dist * 0.35);
+            p.x += (dx / dist) * spd * dt;
+            p.z += (dz / dist) * spd * dt;
+          }
+          jp.rig.rotation.z = Math.sin(time * 1.6 + i * 1.3) * 0.13;
+          jp.rig.rotation.x = Math.cos(time * 1.2 + i * 0.9) * 0.1;
+          // the spent smoke fades out over ~2s once the canopy is open
+          const fade = Math.max(0, 0.85 * (1 - (time - jp.phaseT) / 2));
+          jp.trail.material.opacity = fade;
+          if (fade === 0 && jp.tCount) { jp.tCount = 0; jp.trail.geometry.setDrawRange(0, 0); }
+          if (p.y <= jp.land.y) { p.y = jp.land.y; jp.state = 3; jp.phaseT = time; }
+          return;
+        }
+        // state 3: stood up on the platform — canopy collapses, then fade away
+        const k = time - jp.phaseT;
+        jp.rig.scale.y = Math.max(0.12, 1 - k * 1.1);
+        if (k > 2.4) { jp.state = 4; jp.g.visible = false; jp.trail.visible = false; }
+      });
+
+      if (done) {
+        active = false; root.visible = false;
+        nextAt = time + 110 + Math.random() * 70;
+      }
+    }
+    window._tickRedLions = tick;
+    // dev hooks (console / QA): summon the next jump immediately + inspect
+    window._redLionsNow = () => { nextAt = 0; };
+    window._redLionsRoot = root;
+  }
+
   // === v11: TINY MODE DIRECTIONAL ARROW ===
   // Shows for first 2 questions of every Tiny flight, points at correct gate.
   const tinyArrow = new THREE.Group();
@@ -7193,6 +7413,40 @@
   // only when it kicked in by date (not via ?ndp=1, not pinned by the checkbox).
   if (bootIsAug9 && !forceFestive && Settings.festive === null) {
     setTimeout(() => showToast('🇸🇬 HAPPY NATIONAL DAY!'), 1300);
+  }
+
+  // v19.x: National Day countdown chip — visible through the ~6-week run-up
+  // to Aug 9 and on the day itself. Evergreen: computes the NEXT Aug 9 from
+  // the device date so it re-arms every year, and the SG-number is derived
+  // (year − 1965), never hardcoded. Date math is done on date-only values so
+  // DST/timezone offsets can't produce off-by-one day counts. Tapping the
+  // chip in the run-up previews National Day mode for this session only —
+  // identical semantics to ?ndp=1 (forceFestive, never written to storage).
+  {
+    const chip = document.getElementById('ndp-countdown');
+    if (chip) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let nd = new Date(now.getFullYear(), 7, 9);   // months are 0-based
+      if (today > nd) nd = new Date(now.getFullYear() + 1, 7, 9);
+      const days = Math.round((nd - today) / 86400000);
+      const sgAge = nd.getFullYear() - 1965;
+      if (days === 0) {
+        chip.textContent = '🎆 HAPPY NATIONAL DAY · SG' + sgAge + '!';
+        chip.classList.add('show');
+        chip.disabled = true;   // festive already auto-activates today
+      } else if (days <= 45) {
+        chip.textContent = '🇸🇬 ' + days + (days === 1 ? ' DAY' : ' DAYS') + ' TO NATIONAL DAY · SG' + sgAge;
+        chip.classList.add('show');
+        chip.addEventListener('click', () => {
+          if (festiveActive()) { showToast('🎆 NATIONAL DAY MODE ALREADY ON'); return; }
+          forceFestive = true;          // session-only, exactly like ?ndp=1
+          applyFestive();
+          Sound.click();
+          showToast('🎆 NATIONAL DAY PREVIEW — THIS SESSION');
+        });
+      }
+    }
   }
 
   function toggleSound() {
@@ -8316,6 +8570,7 @@
     tickSpectra(rawDt, t);
     tickSearchlights(rawDt, t);
     if (window._tickDroneShow) window._tickDroneShow(rawDt, t);
+    if (window._tickRedLions)  window._tickRedLions(rawDt, t);
     tickBeacons(t);      // Part C4: aircraft-warning blinkers
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 

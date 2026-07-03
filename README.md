@@ -165,7 +165,9 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 Top Sum is set over Marina Bay, and v15 leans in:
 
 - **🇸🇬 Singlish cheers** — streak milestones cheer in Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*). On by default; toggle from the title screen.
-- **🎆 National Day mode** — auto-activates every **Aug 9**, or pin it on year-round from the title-screen toggle. Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, and a short festive fanfare. Want it today? Add `?ndp=1` to the URL (session-only, doesn't change your saved setting).
+- **🎆 National Day mode** — auto-activates every **Aug 9**, or pin it on year-round from the title-screen toggle. Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, a drone light show over the bay, and a short festive fanfare. Want it today? Add `?ndp=1` to the URL (session-only, doesn't change your saved setting).
+- **🪂 Red Lions jump** — every couple of minutes in National Day mode, a transport runs a pass high over the bay, the stick steps off trailing red smoke, canopies pop, and the team steers down onto the Float platform — the real NDP landing point.
+- **🇸🇬 National Day countdown** — through the ~6-week run-up to Aug 9 the title screen counts down the days (with the year's SG-number). Tap it to preview National Day mode for the current session.
 - **Streak-10 RSAF salute** — hold a 10-streak and a low formation pass roars over the bay in your honour.
 
 ### 🎮 Built for Desktop + Mobile
