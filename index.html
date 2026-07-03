@@ -3721,11 +3721,12 @@
     timeAware.windowMaterials.push(winMat);
     const skyparkMat = new THREE.MeshPhongMaterial({ color: 0x6e6a62 });
     const trimMat = new THREE.MeshPhongMaterial({ color: 0xa8a4a0 });
-    // v20: the infinity pool joins the dusk dimmer — glassy cyan by day, a
-    // glowing strip at sunset, THE beacon of the skim at night (players pass
-    // metres over it every lap). emiScale 1.5 → 0.18 day / 1.28 sunset / 1.58 night.
-    const poolMat = new THREE.MeshPhongMaterial({ color: 0x66ddee, emissive: 0x2f8fa8, emissiveIntensity: 0.5, shininess: 200 });
-    poolMat.userData.emiScale = 1.5;
+    // v20: the infinity pool — a vivid turquoise strip that glows at all
+    // hours and becomes THE beacon of the skim at night (players pass metres
+    // over it every lap). High emiScale so it keeps a real cyan glow even by
+    // day: emiScale 2.6 → 0.31 day / 2.21 sunset / 2.73 night.
+    const poolMat = new THREE.MeshPhongMaterial({ color: 0x2ec8e6, emissive: 0x1fb0d8, emissiveIntensity: 0.6, shininess: 220 });
+    poolMat.userData.emiScale = 2.6;
     timeAware.facadeMaterials.push(poolMat);
     const gardenMat = new THREE.MeshPhongMaterial({ color: 0x4a6a4a });
     const towerH = 110;
@@ -3776,15 +3777,23 @@
     // trim cap reaches the prow tip (x≈59) and tucks just inside the ±14 deck edge
     const trim = new THREE.Mesh(new THREE.BoxGeometry(spLen + 27, 0.5, spW + 2), trimMat);
     trim.position.set(7, towerH + spH - 0.1, 0); g.add(trim);
-    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 8, 0.4, 8), poolMat);
-    pool.position.set(0, towerH + spH + 0.2, 5.5); g.add(pool);
-    // v20: white infinity-edge rim on the bay side + a low cabana row on the
-    // deck — texture for the three seconds the player skims the roof.
-    const rim = new THREE.Mesh(new THREE.BoxGeometry(spLen - 7, 0.55, 0.7), trimMat);
-    rim.position.set(0, towerH + spH + 0.25, 9.9); g.add(rim);
-    for (let ci = 0; ci < 4; ci++) {
-      const cab = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.9, 1.6), trimMat);
-      cab.position.set(-24 + ci * 16, towerH + spH + 0.65, -1.8); g.add(cab);
+    // v20: wide infinity pool filling the bay half of the deck, framed by a
+    // bright white infinity-edge lip on the bay side.
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 6, 0.5, 11), poolMat);
+    pool.position.set(0, towerH + spH + 0.25, 6.5); g.add(pool);
+    const rimMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 60,
+      emissive: 0xffffff, emissiveIntensity: 0.15 });
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(spLen - 5, 0.7, 0.9), rimMat);
+    rim.position.set(0, towerH + spH + 0.35, 12.3); g.add(rim);
+    // A row of bright red/white parasols along the garden side — the deck's
+    // one hit of colour against the pale slab, reads instantly from above.
+    const parasolMats = [0xe23b3b, 0xf5f2ea, 0xe23b3b, 0xf5f2ea, 0xe23b3b].map(c =>
+      new THREE.MeshPhongMaterial({ color: c, shininess: 20 }));
+    for (let ci = 0; ci < 5; ci++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.6, 5), trimMat);
+      post.position.set(-26 + ci * 13, towerH + spH + 0.8, -3); g.add(post);
+      const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.1, 8), parasolMats[ci]);
+      canopy.position.set(-26 + ci * 13, towerH + spH + 1.9, -3); g.add(canopy);
     }
     const garden = new THREE.Mesh(new THREE.BoxGeometry(spLen - 12, 0.3, 6), gardenMat);
     garden.position.set(0, towerH + spH + 0.2, -7); g.add(garden);
@@ -4861,60 +4870,67 @@
   scene.add(buildShophouseRow(-282, -84, 13, 0));            // Boat Quay (south bank)
   scene.add(buildShophouseRow(-295, -134, 7, 0));            // Clarke Quay (north bank)
   // === v20: SINGAPORE RIVER BRIDGES ===
-  // The bridge cluster that defines the river mouth: Cavenagh (pedestrian
-  // suspension) upstream by the Fullerton, Anderson (white steel arches)
-  // at the mouth, and the wide Esplanade road bridge bay-side of it. All
-  // three sit centred on the bumboat cruise line, so the boat threads under
-  // them like the real river cruise. Visual dressing only (tops ≤11; the
-  // path floor over the river mouth is ~69). rotY aims the deck across the
-  // local flow direction; piers land at the banks, clear of the channel.
-  function buildRiverBridge(x, z, len, rotY, style) {
+  // Three bridges spanning the Singapore River notch (the water hole runs
+  // x≈-168..-300 between the north bank at z≈-93..-100 and the south bank at
+  // z≈-128..-136). Each deck runs NORTH-SOUTH (rotY=π/2, local +x → world z)
+  // and is sized to overhang ~4 units onto BOTH banks, so no end floats in
+  // the water. Centred on the bumboat cruise line (route z≈-114) so the boat
+  // passes underneath. Placed WELL upstream of the river mouth (x≤-195), so
+  // the water in front of the Merlion (mouth ≈ x-168) stays open — no more
+  // bridge stranded at an angle in the bay. Visual only (deck y=5; the path
+  // floor over the river is ~69).
+  function buildRiverBridge(x, zCenter, len, style) {
     const g = new THREE.Group();
     const white = new THREE.MeshPhongMaterial({ color: 0xe8e4da, shininess: 40 });
     const grey  = new THREE.MeshPhongMaterial({ color: 0xa9a49a, shininess: 20 });
-    const deckW = style === 'road' ? 9 : (style === 'suspension' ? 3 : 4.5);
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, deckW),
-      style === 'road' ? grey : white);
+    const deckW = style === 'suspension' ? 3.4 : 4.6;   // along-river width
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(len, 0.8, deckW), white);
     deck.position.y = 5; deck.castShadow = true; g.add(deck);
-    for (const px of [-len / 2 + 1.5, len / 2 - 1.5]) {
-      const pier = new THREE.Mesh(new THREE.BoxGeometry(3, 5, deckW + 1), grey);
+    // stone abutments at the two deck ends — these sit on the banks
+    for (const px of [-len / 2 + 2, len / 2 - 2]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(3.2, 5, deckW + 1.4), grey);
       pier.position.set(px, 2.5, 0); g.add(pier);
     }
     if (style === 'arch') {
       // two white steel arches rising over the deck edges (Anderson)
       for (const pz of [-deckW / 2, deckW / 2]) {
         const arch = new THREE.Mesh(
-          new THREE.TorusGeometry(len * 0.42, 0.35, 5, 14, Math.PI), white);
-        arch.position.set(0, 5.2, pz);
-        arch.castShadow = true; g.add(arch);
+          new THREE.TorusGeometry(len * 0.40, 0.35, 5, 16, Math.PI), white);
+        arch.position.set(0, 5.2, pz); arch.castShadow = true; g.add(arch);
+      }
+      // a couple of hangers so the arches read as structural
+      for (const hx of [-len * 0.22, 0, len * 0.22]) {
+        const h = 3.2 + (hx === 0 ? 1.4 : 0);
+        const hang = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, deckW), white);
+        hang.position.set(hx, 5.6 + h / 2, 0); g.add(hang);
       }
     } else if (style === 'suspension') {
-      // four grey-green posts + crossbars (Cavenagh)
+      // four grey-green portal posts + crossbars (Cavenagh)
       const green = new THREE.MeshPhongMaterial({ color: 0x5a6a58, shininess: 25 });
-      for (const px of [-len / 2 + 4, len / 2 - 4]) {
-        for (const pz of [-1.6, 1.6]) {
+      for (const px of [-len / 2 + 5, len / 2 - 5]) {
+        for (const pz of [-1.8, 1.8]) {
           const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.5, 0.9), green);
           post.position.set(px, 8.2, pz); g.add(post);
         }
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 4.4), green);
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 4.8), green);
         bar.position.set(px, 11.2, 0); g.add(bar);
       }
-    } else if (style === 'road') {
-      // low white railings + a hint of the Jubilee walk arc beside the deck
+    } else {
+      // plain beam bridge with low white balustrades (Elgin)
       for (const pz of [-deckW / 2 - 0.2, deckW / 2 + 0.2]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 2, 0.5, 0.4), white);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 4, 0.6, 0.35), white);
         rail.position.set(0, 5.7, pz); g.add(rail);
       }
-      const jubilee = new THREE.Mesh(new THREE.BoxGeometry(len - 6, 0.5, 2.2), white);
-      jubilee.position.set(0, 4.6, deckW / 2 + 2.6); g.add(jubilee);
     }
-    g.rotation.y = rotY;
-    g.position.set(x, 0, z);
+    g.rotation.y = Math.PI / 2;   // deck spans north-south across the river
+    g.position.set(x, 0, zCenter);
     return g;
   }
-  scene.add(buildRiverBridge(-185, -106, 36, -Math.atan2(0.985, -0.169), 'suspension')); // Cavenagh
-  scene.add(buildRiverBridge(-138,  -82, 40, -Math.atan2(0.6, -0.8), 'arch'));           // Anderson
-  scene.add(buildRiverBridge(-127,  -70, 46, -Math.atan2(0.6, -0.8), 'road'));           // Esplanade + Jubilee
+  // [x, zCenter, len] — spans computed from the reservoirHole river banks so
+  // each deck lands ~4u onto land at both ends (verified against the notch).
+  scene.add(buildRiverBridge(-195, -115, 50, 'arch'));         // Anderson Bridge
+  scene.add(buildRiverBridge(-235, -114, 43, 'suspension'));   // Cavenagh Bridge
+  scene.add(buildRiverBridge(-272, -114, 37, 'beam'));         // Elgin Bridge
   scene.add(buildCivicDistrict());
   scene.add(buildBarrage());
   scene.add(buildGardenDome(215, 50, 14, 11, 16));           // Cloud Forest
@@ -4975,22 +4991,6 @@
       const bridge = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 4), cbdCrownMat);
       bridge.position.set(0, topBase + 28, 0); crown.add(bridge);
       crown.position.set(x, 0, z); scene.add(crown);
-    } else if (seed === 7) {
-      // v20: OCBC Centre — "the calculator": two pale side shoulders framing
-      // the dark slab, plus the horizontal white push-button rib bands across
-      // the avenue face. All within the existing footprint/collider envelope.
-      const deco = new THREE.Group();
-      for (const sx of [-8.5, 8.5]) {
-        const shoulder = new THREE.Mesh(new THREE.BoxGeometry(5, h * 0.86, 13), cbdCrownMat);
-        shoulder.position.set(sx, h * 0.43, 0); shoulder.castShadow = true;
-        deco.add(shoulder);
-      }
-      for (let r = 0; r < 4; r++) {
-        const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 15), cbdCrownMat);
-        rib.position.set(11.3, h * (0.28 + r * 0.17), 0);
-        deco.add(rib);
-      }
-      deco.position.set(x, 0, z); scene.add(deco);
     }
   });
   // v20: Lau Pa Sat — the octagonal Victorian market hall tucked low between
@@ -5002,21 +5002,23 @@
     const hall = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 5.5, 8),
       new THREE.MeshPhongMaterial({ color: 0xded5bf, shininess: 18 }));
     hall.position.y = 2.75; hall.castShadow = true; lps.add(hall);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(14.5, 6, 8),
-      new THREE.MeshPhongMaterial({ color: 0x3e5a48, shininess: 12 }));
+    // v20: vivid pumpkin-orange roof (shared across roof + both caps). Flat
+    // unlit (MeshBasic) on purpose — a lit orange washed to tan under this
+    // scene's bright bluish ambient + ACES; unlit holds a true, punchy orange
+    // that reads instantly from the canyon floor and fits the low-poly style.
+    const lpsRoofMat = new THREE.MeshBasicMaterial({ color: 0xe85d12 });
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(14.5, 6, 8), lpsRoofMat);
     roof.position.y = 8.5; roof.castShadow = true; lps.add(roof);
     const lantern = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3, 8),
       new THREE.MeshPhongMaterial({ color: 0xded5bf }));
     lantern.position.y = 12.5; lps.add(lantern);
-    const lanternCap = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.4, 8),
-      new THREE.MeshPhongMaterial({ color: 0x3e5a48 }));
+    const lanternCap = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.4, 8), lpsRoofMat);
     lanternCap.position.y = 15.2; lps.add(lanternCap);
     // corner clock tower
     const clock = new THREE.Mesh(new THREE.BoxGeometry(2.4, 14, 2.4),
       new THREE.MeshPhongMaterial({ color: 0xded5bf }));
     clock.position.set(15.5, 7, 9); clock.castShadow = true; lps.add(clock);
-    const clockCap = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.6, 4),
-      new THREE.MeshPhongMaterial({ color: 0x3e5a48 }));
+    const clockCap = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.6, 4), lpsRoofMat);
     clockCap.position.set(15.5, 15.3, 9); clockCap.rotation.y = Math.PI / 4; lps.add(clockCap);
     lps.position.set(-263, 0, 106);
     scene.add(lps);
@@ -7883,6 +7885,12 @@
   // chip in the run-up previews National Day mode for this session only —
   // identical semantics to ?ndp=1 (forceFestive, never written to storage).
   {
+    // Evergreen + re-arming: nd is ALWAYS the *next* Aug 9 (rolls to next
+    // year the moment today passes it), so after National Day the chip simply
+    // hides until ~45 days before the following year's Aug 9, then counts down
+    // again with the new SG-number (year − 1965). Since v20 made festive the
+    // permanent default, this is now a pure informational badge — there's no
+    // "preview" to trigger, so it's not clickable.
     const chip = document.getElementById('ndp-countdown');
     if (chip) {
       const now = new Date();
@@ -7891,20 +7899,13 @@
       if (today > nd) nd = new Date(now.getFullYear() + 1, 7, 9);
       const days = Math.round((nd - today) / 86400000);
       const sgAge = nd.getFullYear() - 1965;
+      chip.disabled = true;   // informational only (festive is always on now)
       if (days === 0) {
         chip.textContent = '🎆 HAPPY NATIONAL DAY · SG' + sgAge + '!';
         chip.classList.add('show');
-        chip.disabled = true;   // festive already auto-activates today
       } else if (days <= 45) {
         chip.textContent = '🇸🇬 ' + days + (days === 1 ? ' DAY' : ' DAYS') + ' TO NATIONAL DAY · SG' + sgAge;
         chip.classList.add('show');
-        chip.addEventListener('click', () => {
-          if (festiveActive()) { showToast('🎆 NATIONAL DAY MODE ALREADY ON'); return; }
-          forceFestive = true;          // session-only, exactly like ?ndp=1
-          applyFestive();
-          Sound.click();
-          showToast('🎆 NATIONAL DAY PREVIEW — THIS SESSION');
-        });
       }
     }
   }

@@ -157,7 +157,7 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 - A **rotating Singapore Flyer** (~100 s per revolution, capsules stay level)
 - Day, Sunset and **Night** modes, with fog depth tuned per time-of-day — night is the parade setting, lit entirely by the city (windows, garland, supertrees, the SkyPark pool) under cool moonlight
 - **Fake skyline reflections** — additive light-smear strips off the CBD, MBS and Esplanade shores at sunset/night, and the bay **flushes with the color of every firework burst**
-- The **Singapore River bridge cluster** (Cavenagh, Anderson's steel arches, the Esplanade Bridge + Jubilee walk) — the bumboat cruise threads under all three — plus **Lau Pa Sat**'s clock tower amid the CBD canyon, an **OCBC 'calculator'** restyle, and **Marina One**'s green-heart quad in Marina South
+- The **Singapore River bridge cluster** (Anderson's steel arches, Cavenagh's portal towers and Elgin) — the bumboat cruise threads under all three — plus **Lau Pa Sat**'s orange-roofed market hall and clock tower amid the CBD canyon, and **Marina One**'s green-heart quad in Marina South
 - Fireworks during sunset
 - A Chinook with a Singapore flag orbits at altitude during the day
 - Occasional NDP-style RSAF fighter formation flypast with contrails

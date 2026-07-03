@@ -14,7 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 | Feature | Gate |
 |---|---|
 | GPU water waves, merged shophouse geometry, ring-buffer trails | Always (pure perf) |
-| SkyPark pool glow + deck, river bridges, Lau Pa Sat, OCBC restyle, Marina One | Always (world accuracy) |
+| SkyPark pool + parasols, river bridges, Lau Pa Sat, Marina One | Always (world accuracy) |
 | Night Flight | Time picker, unlocks at 1000 pts |
 | Light-smear bay reflections | Sunset + Night |
 | Water firework glow | Whenever fireworks burst |
@@ -28,7 +28,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 - **The bay answers the sky** — while fireworks burst, the water emissive lerps toward the burst color from per-mode bases, so the NDP finale flushes the whole reservoir red.
 - **Singapore River bridges** — Cavenagh (pedestrian suspension posts), Anderson (white steel arches) and the Esplanade Bridge + Jubilee walk, all centred on the bumboat cruise line so the boat threads under them like the real river cruise.
 - **Lau Pa Sat** — the octagonal Victorian market hall + corner clock tower low between the CBD canyon rows (apex ~19 vs the drift-envelope floor ~40).
-- **OCBC Centre "calculator"** — pale side shoulders + white rib bands on the seed-7 canyon tower, inside its existing footprint/collider; joins v19's Republic Plaza and UOB Plaza crowns.
 - **Marina One** — four bronze-green towers around a green-heart canopy at Marina South, ~55 off the closing path leg (Promontory searchlight lawn kept clear), standard colliders.
 - **MBS SkyPark deck pass** — the infinity pool joins the dusk dimmer (a glowing cyan strip at night, right where players skim), plus a white infinity-edge rim and cabana row.
 - **NDP set dressing** (one festive-gated group, stripped live by the toggle): wall flags draped down all five HDB estates, red/white bunting along the Boat Quay and Clarke Quay shophouse fronts, a ~260-speck crowd terraced up the Float grandstand arcs, and eight spectator boats anchored off the platform.
