@@ -5,6 +5,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v20] — 2026-07-03
+
+**The NDP release build.** National Day mode becomes the default look, the bay gets a night, reflections-on-a-budget, the missing river bridges and signature towers land, and the whole thing runs on fewer draw calls than before the pass started.
+
+### NDP vs normal — what's gated where
+
+| Feature | Gate |
+|---|---|
+| GPU water waves, merged shophouse geometry, ring-buffer trails | Always (pure perf) |
+| SkyPark pool glow + deck, river bridges, Lau Pa Sat, OCBC restyle, Marina One | Always (world accuracy) |
+| Night Flight | Time picker, unlocks at 1000 pts |
+| Light-smear bay reflections | Sunset + Night |
+| Water firework glow | Whenever fireworks burst |
+| HDB flags, bunting, Float crowd, spectator boats, drone show, Red Lions, red/white takeover | Festive — **now default ON** |
+| Escape hatches | 🎆 toggle off (persists) · `?ndp=0` (session) |
+
+### Added
+- **Perpetual National Day mode** — `festiveActive()` now defaults ON instead of Aug-9-only. The 🎆 toggle still opts out persistently; `?ndp=0` joins `?ndp=1` as a session-only override for A/B comparison or a fast cut if the red/white look needs to come back down.
+- **Night Flight** — a third time-of-day preset: near-black blue sky, cool moonlight (the sun sprite doubles as the moon), city-carried lighting (windows at full glow, garland, supertrees, Helix, the SkyPark pool), bright-gold answer gates. Unlocks at 1000 points through the existing ladder with celebration + preview; every sunset-only ambient system (fireworks + streak finales, Spectra, beacon ceiling, traffic light-streams) widened to cover it.
+- **Fake skyline reflections** — three additive light-smear strips just off the CBD, MBS and Esplanade shores at sunset/night, with per-strip shimmer. One shared 128² canvas, three draw calls.
+- **The bay answers the sky** — while fireworks burst, the water emissive lerps toward the burst color from per-mode bases, so the NDP finale flushes the whole reservoir red.
+- **Singapore River bridges** — Cavenagh (pedestrian suspension posts), Anderson (white steel arches) and the Esplanade Bridge + Jubilee walk, all centred on the bumboat cruise line so the boat threads under them like the real river cruise.
+- **Lau Pa Sat** — the octagonal Victorian market hall + corner clock tower low between the CBD canyon rows (apex ~19 vs the drift-envelope floor ~40).
+- **OCBC Centre "calculator"** — pale side shoulders + white rib bands on the seed-7 canyon tower, inside its existing footprint/collider; joins v19's Republic Plaza and UOB Plaza crowns.
+- **Marina One** — four bronze-green towers around a green-heart canopy at Marina South, ~55 off the closing path leg (Promontory searchlight lawn kept clear), standard colliders.
+- **MBS SkyPark deck pass** — the infinity pool joins the dusk dimmer (a glowing cyan strip at night, right where players skim), plus a white infinity-edge rim and cabana row.
+- **NDP set dressing** (one festive-gated group, stripped live by the toggle): wall flags draped down all five HDB estates, red/white bunting along the Boat Quay and Clarke Quay shophouse fronts, a ~260-speck crowd terraced up the Float grandstand arcs, and eight spectator boats anchored off the platform.
+- **`?debug=1` dev overlay** — live draw calls / triangles / geometries / textures / fps, plus `window._scene` / `_camera` hooks for headless QA probes.
+
+### Changed
+- **Water is GPU-displaced** — the two CPU wave terms moved into the Phong vertex shader via `onBeforeCompile` (plus a now-free high-frequency ripple), killing the ~1.7k-vertex per-frame JS loop and full buffer re-upload; mesh density raised 40→96 desktop / 22→40 mobile.
+- **Shophouse rows merged** — 49 houses were 98 meshes with ~49 one-off materials; now 10 meshes sharing 2 materials (vertex-colored bodies) via a hand-rolled indexed-geometry merge.
+- **Contrail buffers** — flypast and Red Lions smoke trails shift via `copyWithin` instead of element loops.
+
+### Measured
+- Title-orbit draw calls: **586 before the pass → 568 with every new feature on screen** (521 with festive off). The merge paid for all the additions.
+
+### Verified
+- Headless sweep across day/sunset/night × festive on/off: zero page errors; smears visible at sunset/night; festive default on, `?ndp=0` strips the dressing live; Red Lions, gameplay, and challenge flows intact.
+
+---
+
 ## [v19] — 2026-06-13
 
 **Tiny mode grows up as a learning tool, and every wrong gate now teaches.**
