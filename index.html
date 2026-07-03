@@ -3238,6 +3238,9 @@
     // reference photo leads with. On at sunset/night, on when festive
     // (National Day mode re-calls _applyTimeOfDay), invisible in daylight.
     if (garlandPts) garlandPts.visible = lit || fest;
+    // v20: NDP set dressing (HDB flags, bunting, Float crowd, spectator
+    // boats) rides festive state — the 🎆 toggle / ?ndp=0 strip it live.
+    if (window._festiveDressing) window._festiveDressing.visible = fest;
     if (fest !== _lastFestive) {
       _lastFestive = fest;
       if (window._regenFacades) window._regenFacades();
@@ -3718,7 +3721,12 @@
     timeAware.windowMaterials.push(winMat);
     const skyparkMat = new THREE.MeshPhongMaterial({ color: 0x6e6a62 });
     const trimMat = new THREE.MeshPhongMaterial({ color: 0xa8a4a0 });
-    const poolMat = new THREE.MeshPhongMaterial({ color: 0x66ddee, emissive: 0x336688, emissiveIntensity: 0.5, shininess: 200 });
+    // v20: the infinity pool joins the dusk dimmer — glassy cyan by day, a
+    // glowing strip at sunset, THE beacon of the skim at night (players pass
+    // metres over it every lap). emiScale 1.5 → 0.18 day / 1.28 sunset / 1.58 night.
+    const poolMat = new THREE.MeshPhongMaterial({ color: 0x66ddee, emissive: 0x2f8fa8, emissiveIntensity: 0.5, shininess: 200 });
+    poolMat.userData.emiScale = 1.5;
+    timeAware.facadeMaterials.push(poolMat);
     const gardenMat = new THREE.MeshPhongMaterial({ color: 0x4a6a4a });
     const towerH = 110;
     for (let i = 0; i < 3; i++) {
@@ -3768,8 +3776,16 @@
     // trim cap reaches the prow tip (x≈59) and tucks just inside the ±14 deck edge
     const trim = new THREE.Mesh(new THREE.BoxGeometry(spLen + 27, 0.5, spW + 2), trimMat);
     trim.position.set(7, towerH + spH - 0.1, 0); g.add(trim);
-    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 8, 0.4, 7), poolMat);
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 8, 0.4, 8), poolMat);
     pool.position.set(0, towerH + spH + 0.2, 5.5); g.add(pool);
+    // v20: white infinity-edge rim on the bay side + a low cabana row on the
+    // deck — texture for the three seconds the player skims the roof.
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(spLen - 7, 0.55, 0.7), trimMat);
+    rim.position.set(0, towerH + spH + 0.25, 9.9); g.add(rim);
+    for (let ci = 0; ci < 4; ci++) {
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.9, 1.6), trimMat);
+      cab.position.set(-24 + ci * 16, towerH + spH + 0.65, -1.8); g.add(cab);
+    }
     const garden = new THREE.Mesh(new THREE.BoxGeometry(spLen - 12, 0.3, 6), gardenMat);
     garden.position.set(0, towerH + spH + 0.2, -7); g.add(garden);
 
@@ -4382,25 +4398,65 @@
   // Rows of pastel two-storey shophouses with dark caps hugging the river
   // banks — the splash of colour every Singapore River photo has. Visual
   // only (≤11 high; the path floor over the river is ~69).
+  // v20: concatenate pre-transformed indexed geometries with identical
+  // attribute layouts into one BufferGeometry — the hand-rolled equivalent
+  // of BufferGeometryUtils.mergeBufferGeometries (an examples module, not in
+  // the three.min core). Used to collapse static repeated dressing (the 49
+  // shophouses were 98 meshes / ~49 materials → 10 meshes / 2 materials).
+  function mergeStaticGeos(geos) {
+    const names = Object.keys(geos[0].attributes);
+    let vTot = 0, iTot = 0;
+    geos.forEach(g => { vTot += g.attributes.position.count; iTot += g.index.count; });
+    const out = new THREE.BufferGeometry();
+    for (const name of names) {
+      const itemSize = geos[0].attributes[name].itemSize;
+      const arr = new Float32Array(vTot * itemSize);
+      let off = 0;
+      geos.forEach(g => { arr.set(g.attributes[name].array, off); off += g.attributes[name].array.length; });
+      out.setAttribute(name, new THREE.BufferAttribute(arr, itemSize));
+    }
+    const idx = new (vTot > 65535 ? Uint32Array : Uint16Array)(iTot);
+    let io = 0, vo = 0;
+    geos.forEach(g => {
+      for (let i = 0; i < g.index.count; i++) idx[io + i] = g.index.getX(i) + vo;
+      io += g.index.count; vo += g.attributes.position.count;
+    });
+    out.setIndex(new THREE.BufferAttribute(idx, 1));
+    geos.forEach(g => g.dispose());
+    return out;
+  }
+  // v20: shared row materials — one vertex-colored Phong for every pastel
+  // body in the world, one clay for every cap.
+  const shopBodyMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 15 });
+  const shopCapMat  = new THREE.MeshPhongMaterial({ color: 0x7a4438, shininess: 10 });
   function buildShophouseRow(x, z, n, rotationY) {
+    // v20: one merged vertex-colored mesh for the bodies + one for the caps
+    // (was: 2 meshes and a fresh material per house).
     const g = new THREE.Group();
     const palette = [0xf2c8a2, 0xe89aa4, 0xa8c8e0, 0xf2e0b0, 0xb8d8b0, 0xe0b8d8];
-    const capMat = new THREE.MeshPhongMaterial({ color: 0x7a4438, shininess: 10 });
+    const bodies = [], caps = [];
+    const col = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const h = 8 + (i * 3) % 3;
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(7, h, 9),
-        new THREE.MeshPhongMaterial({ color: palette[i % palette.length], shininess: 15 }));
-      body.position.set(i * 7.5, h / 2, 0);
-      body.castShadow = true; body.receiveShadow = true;
-      g.add(body);
+      const body = new THREE.BoxGeometry(7, h, 9);
+      body.translate(i * 7.5, h / 2, 0);
+      col.setHex(palette[i % palette.length]);
+      const vc = new Float32Array(body.attributes.position.count * 3);
+      for (let v = 0; v < vc.length; v += 3) { vc[v] = col.r; vc[v+1] = col.g; vc[v+2] = col.b; }
+      body.setAttribute('color', new THREE.BufferAttribute(vc, 3));
+      bodies.push(body);
       // squat pyramid cap reads as a pitched clay roof from flight altitude
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(5.4, 2.4, 4), capMat);
-      cap.position.set(i * 7.5, h + 1.2, 0);
-      cap.rotation.y = Math.PI / 4;
-      cap.castShadow = true;
-      g.add(cap);
+      const cap = new THREE.ConeGeometry(5.4, 2.4, 4);
+      cap.rotateY(Math.PI / 4);
+      cap.translate(i * 7.5, h + 1.2, 0);
+      caps.push(cap);
     }
+    const bodyMesh = new THREE.Mesh(mergeStaticGeos(bodies), shopBodyMat);
+    bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
+    g.add(bodyMesh);
+    const capMesh = new THREE.Mesh(mergeStaticGeos(caps), shopCapMat);
+    capMesh.castShadow = true;
+    g.add(capMesh);
     g.rotation.y = rotationY || 0;
     g.position.set(x, 0, z); return g;
   }
@@ -4804,6 +4860,61 @@
   // Sheares viaduct get colliders.
   scene.add(buildShophouseRow(-282, -84, 13, 0));            // Boat Quay (south bank)
   scene.add(buildShophouseRow(-295, -134, 7, 0));            // Clarke Quay (north bank)
+  // === v20: SINGAPORE RIVER BRIDGES ===
+  // The bridge cluster that defines the river mouth: Cavenagh (pedestrian
+  // suspension) upstream by the Fullerton, Anderson (white steel arches)
+  // at the mouth, and the wide Esplanade road bridge bay-side of it. All
+  // three sit centred on the bumboat cruise line, so the boat threads under
+  // them like the real river cruise. Visual dressing only (tops ≤11; the
+  // path floor over the river mouth is ~69). rotY aims the deck across the
+  // local flow direction; piers land at the banks, clear of the channel.
+  function buildRiverBridge(x, z, len, rotY, style) {
+    const g = new THREE.Group();
+    const white = new THREE.MeshPhongMaterial({ color: 0xe8e4da, shininess: 40 });
+    const grey  = new THREE.MeshPhongMaterial({ color: 0xa9a49a, shininess: 20 });
+    const deckW = style === 'road' ? 9 : (style === 'suspension' ? 3 : 4.5);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, deckW),
+      style === 'road' ? grey : white);
+    deck.position.y = 5; deck.castShadow = true; g.add(deck);
+    for (const px of [-len / 2 + 1.5, len / 2 - 1.5]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(3, 5, deckW + 1), grey);
+      pier.position.set(px, 2.5, 0); g.add(pier);
+    }
+    if (style === 'arch') {
+      // two white steel arches rising over the deck edges (Anderson)
+      for (const pz of [-deckW / 2, deckW / 2]) {
+        const arch = new THREE.Mesh(
+          new THREE.TorusGeometry(len * 0.42, 0.35, 5, 14, Math.PI), white);
+        arch.position.set(0, 5.2, pz);
+        arch.castShadow = true; g.add(arch);
+      }
+    } else if (style === 'suspension') {
+      // four grey-green posts + crossbars (Cavenagh)
+      const green = new THREE.MeshPhongMaterial({ color: 0x5a6a58, shininess: 25 });
+      for (const px of [-len / 2 + 4, len / 2 - 4]) {
+        for (const pz of [-1.6, 1.6]) {
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.5, 0.9), green);
+          post.position.set(px, 8.2, pz); g.add(post);
+        }
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 4.4), green);
+        bar.position.set(px, 11.2, 0); g.add(bar);
+      }
+    } else if (style === 'road') {
+      // low white railings + a hint of the Jubilee walk arc beside the deck
+      for (const pz of [-deckW / 2 - 0.2, deckW / 2 + 0.2]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 2, 0.5, 0.4), white);
+        rail.position.set(0, 5.7, pz); g.add(rail);
+      }
+      const jubilee = new THREE.Mesh(new THREE.BoxGeometry(len - 6, 0.5, 2.2), white);
+      jubilee.position.set(0, 4.6, deckW / 2 + 2.6); g.add(jubilee);
+    }
+    g.rotation.y = rotY;
+    g.position.set(x, 0, z);
+    return g;
+  }
+  scene.add(buildRiverBridge(-185, -106, 36, -Math.atan2(0.985, -0.169), 'suspension')); // Cavenagh
+  scene.add(buildRiverBridge(-138,  -82, 40, -Math.atan2(0.6, -0.8), 'arch'));           // Anderson
+  scene.add(buildRiverBridge(-127,  -70, 46, -Math.atan2(0.6, -0.8), 'road'));           // Esplanade + Jubilee
   scene.add(buildCivicDistrict());
   scene.add(buildBarrage());
   scene.add(buildGardenDome(215, 50, 14, 11, 16));           // Cloud Forest
@@ -4864,8 +4975,52 @@
       const bridge = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 4), cbdCrownMat);
       bridge.position.set(0, topBase + 28, 0); crown.add(bridge);
       crown.position.set(x, 0, z); scene.add(crown);
+    } else if (seed === 7) {
+      // v20: OCBC Centre — "the calculator": two pale side shoulders framing
+      // the dark slab, plus the horizontal white push-button rib bands across
+      // the avenue face. All within the existing footprint/collider envelope.
+      const deco = new THREE.Group();
+      for (const sx of [-8.5, 8.5]) {
+        const shoulder = new THREE.Mesh(new THREE.BoxGeometry(5, h * 0.86, 13), cbdCrownMat);
+        shoulder.position.set(sx, h * 0.43, 0); shoulder.castShadow = true;
+        deco.add(shoulder);
+      }
+      for (let r = 0; r < 4; r++) {
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 15), cbdCrownMat);
+        rib.position.set(11.3, h * (0.28 + r * 0.17), 0);
+        deco.add(rib);
+      }
+      deco.position.set(x, 0, z); scene.add(deco);
     }
   });
+  // v20: Lau Pa Sat — the octagonal Victorian market hall tucked low between
+  // the canyon rows (its real spot amid the Raffles Place towers). Visual
+  // dressing only: apex ≈19, the canyon path floor is Y≈56 and the gate/drift
+  // envelope bottoms out ≈40 — clear by 20+.
+  {
+    const lps = new THREE.Group();
+    const hall = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 5.5, 8),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf, shininess: 18 }));
+    hall.position.y = 2.75; hall.castShadow = true; lps.add(hall);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(14.5, 6, 8),
+      new THREE.MeshPhongMaterial({ color: 0x3e5a48, shininess: 12 }));
+    roof.position.y = 8.5; roof.castShadow = true; lps.add(roof);
+    const lantern = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3, 8),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf }));
+    lantern.position.y = 12.5; lps.add(lantern);
+    const lanternCap = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.4, 8),
+      new THREE.MeshPhongMaterial({ color: 0x3e5a48 }));
+    lanternCap.position.y = 15.2; lps.add(lanternCap);
+    // corner clock tower
+    const clock = new THREE.Mesh(new THREE.BoxGeometry(2.4, 14, 2.4),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf }));
+    clock.position.set(15.5, 7, 9); clock.castShadow = true; lps.add(clock);
+    const clockCap = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.6, 4),
+      new THREE.MeshPhongMaterial({ color: 0x3e5a48 }));
+    clockCap.position.set(15.5, 15.3, 9); clockCap.rotation.y = Math.PI / 4; lps.add(clockCap);
+    lps.position.set(-263, 0, 106);
+    scene.add(lps);
+  }
   // v16.1: Suntec's five towers in their real arc around the Fountain of
   // Wealth, on Marina Centre behind the promenade NW of the Flyer.
   // Tops ≤66; the P10-P11 legs pass well above even at full down-drift.
@@ -4916,6 +5071,27 @@
     scene.add(b);
     addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
   });
+  // v20: MARINA ONE — the four dark bronze-green towers around the "green
+  // heart" garden core, filling Marina South's empty quarter south of the
+  // Promontory lawn (whose searchlights sit at (-112,196) — kept clear).
+  // Anchored at (-120, 330): ~55 laterally off the P17→P0 closing leg, so
+  // the gate reach (±23.5) and the hard-drift envelope (±28) both clear by
+  // 16+ — safer margin than the deliberately-clippable canyon rows. Each
+  // tower gets the standard collider anyway.
+  {
+    const m1Mat = makeFacadeMaterial(facadeTexB, 'cbdB', 0x4a5a48, 1);
+    const m1H = [86, 80, 72, 78];
+    [[-15, -15], [15, -15], [-15, 15], [15, 15]].forEach(([ox, oz], i) => {
+      const b = buildBuilding(-120 + ox, 330 + oz, 15, m1H[i], 15, 41 + i * 9, m1Mat);
+      scene.add(b);
+      addCollider(-120 + ox, 330 + oz, 10.5, 10.5, b.userData.totalH + 2);
+    });
+    // the green heart: a lush bowl of canopy between the four towers
+    const heart = new THREE.Mesh(new THREE.SphereGeometry(9, 10, 7),
+      new THREE.MeshPhongMaterial({ color: 0x4a7a44, shininess: 8 }));
+    heart.scale.y = 0.55; heart.position.set(-120, 4, 330);
+    scene.add(heart);
+  }
 
   // === v19: THE PROMONTORY / "THE LAWN" @ MARINA BAY ===
   // The chevron waterfront lawn in front of MBFC — the real home of the bay's
@@ -4977,6 +5153,136 @@
   scene.add(buildAnchoredShips());
   // …and the trees. Two draw calls, after every collider is registered.
   plantGardenCity();
+
+  // === v20: NDP SET DRESSING (festive-gated, default-on) ===
+  // The city dresses up for August: giant flags draped down the HDB block
+  // faces (the real heartland tradition), red/white bunting strung along
+  // the Boat Quay / Clarke Quay shophouse fronts, a red-and-white crowd
+  // filling the Float grandstand arcs, and a small fleet of spectator boats
+  // anchored in the bay off the platform. Everything lives in ONE group
+  // whose visibility applyTimeOfDay ties to festiveActive(), so the 🎆
+  // toggle / ?ndp=0 strip it live. Costs: ~14 flag planes (1 shared
+  // material), 2 Points clouds, 8 two-box boats — all static.
+  {
+    const dress = new THREE.Group();
+    // — wall flag texture (hoist-left, standard hang) —
+    const fc = document.createElement('canvas');
+    fc.width = 128; fc.height = 86;
+    const fx = fc.getContext('2d');
+    fx.fillStyle = '#dc3545'; fx.fillRect(0, 0, 128, 43);
+    fx.fillStyle = '#ffffff'; fx.fillRect(0, 43, 128, 43);
+    fx.beginPath(); fx.arc(30, 21, 13, 0, Math.PI * 2); fx.fill();
+    fx.fillStyle = '#dc3545';
+    fx.beginPath(); fx.arc(35, 21, 11, 0, Math.PI * 2); fx.fill();
+    fx.fillStyle = '#ffffff';
+    const wStar = (cx, cy, r) => {
+      fx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = i * Math.PI * 2 / 5 - Math.PI / 2, a2 = a + Math.PI / 5;
+        if (i === 0) fx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        else fx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        fx.lineTo(cx + Math.cos(a2) * r * 0.4, cy + Math.sin(a2) * r * 0.4);
+      }
+      fx.closePath(); fx.fill();
+    };
+    wStar(55, 14, 3.2); wStar(67, 14, 3.2); wStar(79, 14, 3.2);
+    wStar(60, 25, 3.2); wStar(73, 25, 3.2);
+    const wallFlagMat = new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(fc), side: THREE.DoubleSide
+    });
+    const flagGeo = new THREE.PlaneGeometry(9, 6);
+    // two flags per estate, hung on the two unrotated/least-rotated slabs
+    // (block 1 at local (0,-12) h44, block 4 at (12,12) h46 — see buildHDB)
+    const estates = [[-50, -330], [-310, -230], [-480, -120], [-495, 265], [200, -425]];
+    for (const [ex, ez] of estates) {
+      const fA = new THREE.Mesh(flagGeo, wallFlagMat);
+      fA.position.set(ex + 5.4, 37, ez - 12);
+      fA.rotation.y = Math.PI / 2;
+      dress.add(fA);
+      const fB = new THREE.Mesh(flagGeo, wallFlagMat);
+      fB.position.set(ex + 6.3, 39, ez + 12);
+      fB.rotation.y = -Math.PI / 2;
+      dress.add(fB);
+    }
+    // — bunting along the shophouse fronts (points sag between eaves) —
+    {
+      const spans = [];
+      // [rowX, rowZ, count, frontDz] — fronts face the river
+      for (const [rx, rz, n, dz] of [[-282, -84, 13, -4.8], [-295, -134, 7, 4.8]]) {
+        for (let i = 0; i < n - 1; i++) {
+          spans.push([rx + i * 7.5, rx + (i + 1) * 7.5, rz + dz]);
+        }
+      }
+      const P = 5;                                   // points per span
+      const pos = new Float32Array(spans.length * P * 3);
+      const col = new Float32Array(spans.length * P * 3);
+      let k = 0;
+      for (const [x0, x1, z] of spans) {
+        for (let j = 0; j < P; j++) {
+          const t = (j + 0.5) / P;
+          pos[k * 3] = x0 + (x1 - x0) * t;
+          pos[k * 3 + 1] = 7.4 - Math.sin(Math.PI * t) * 1.3;
+          pos[k * 3 + 2] = z;
+          const red = (k % 2) === 0;
+          col[k * 3] = 1; col[k * 3 + 1] = red ? 0.25 : 1; col[k * 3 + 2] = red ? 0.3 : 1;
+          k++;
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      dress.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 0.9, vertexColors: true, sizeAttenuation: true, fog: true
+      })));
+    }
+    // — the Float crowd: red/white specks terraced up the grandstand arcs —
+    {
+      const N = isMobilePerf ? 150 : 260;
+      const pos = new Float32Array(N * 3);
+      const col = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        const arc = i % 3;
+        const r = 23.5 + arc * 3;
+        const a = (Math.random() * 1.4 - 0.7) * Math.PI;   // land-side sweep
+        pos[i * 3] = 105 + Math.sin(a) * r;
+        pos[i * 3 + 1] = 4.2 + arc * 1.5 + Math.random() * 0.5;
+        pos[i * 3 + 2] = -192 - Math.cos(a) * r;
+        const red = Math.random() < 0.55;
+        col[i * 3] = 1; col[i * 3 + 1] = red ? 0.3 : 0.95; col[i * 3 + 2] = red ? 0.32 : 0.9;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      dress.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 1.15, vertexColors: true, sizeAttenuation: true
+      })));
+    }
+    // — spectator boats anchored off the Float (clear of the cruise routes
+    //   and the platform's southern edge at z≈-162) —
+    {
+      const hullMat = new THREE.MeshPhongMaterial({ color: 0xf0ede4, shininess: 30 });
+      const cabMat = new THREE.MeshPhongMaterial({
+        color: 0xc8b890, emissive: 0xffaa55, emissiveIntensity: 0.35
+      });
+      cabMat.userData.emiScale = 0.9;
+      timeAware.facadeMaterials.push(cabMat);
+      const anchors = [[85, -150, 0.4], [98, -143, 2.1], [110, -150, 1.2], [90, -132, 2.8],
+                       [104, -125, 0.9], [115, -135, 1.7], [82, -120, 2.4], [95, -115, 0.2]];
+      for (const [bx, bz, ry] of anchors) {
+        const boat = new THREE.Group();
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1, 2), hullMat);
+        hull.position.y = 0.6; boat.add(hull);
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 1.5), cabMat);
+        cab.position.y = 1.5; boat.add(cab);
+        boat.rotation.y = ry;
+        boat.position.set(bx, 0, bz);
+        dress.add(boat);
+      }
+    }
+    scene.add(dress);
+    window._festiveDressing = dress;
+    dress.visible = false;   // applyTimeOfDay owns it from the first call
+  }
 
   // === C3: ROOFTOP PROP KIT ===
   // One InstancedMesh of grey boxes scattered over every roof rect collected
