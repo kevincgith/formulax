@@ -1,7 +1,7 @@
 # ✈️ TOP SUM · Math Flight Over Marina Bay
 
-> A free arcade-style math flight game for kids.
-> Learn by flying through the correct answer.
+> A free arcade-style math flight game over Marina Bay — for kids and grown-ups alike.
+> Fly through the right answer, chain streaks into flow, challenge a friend.
 
 🌐 **Play instantly in your browser:**
 👉 https://mli3w.github.io/top-sum/
@@ -155,7 +155,9 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 - **Ambient traffic** — dark specks by day, glowing light streams at dusk
 - A **shoreline light garland** along the promenade at dusk and on festive days
 - A **rotating Singapore Flyer** (~100 s per revolution, capsules stay level)
-- Day and Sunset modes, with fog depth tuned per time-of-day
+- Day, Sunset and **Night** modes, with fog depth tuned per time-of-day — night is the parade setting, lit entirely by the city (windows, garland, supertrees, the SkyPark pool) under cool moonlight
+- **Fake skyline reflections** — additive light-smear strips off the CBD, MBS and Esplanade shores at sunset/night, and the bay **flushes with the color of every firework burst**
+- The **Singapore River bridge cluster** (Anderson's steel arches, Cavenagh's portal towers and Elgin) — the bumboat cruise threads under all three — plus **Lau Pa Sat**'s orange-roofed market hall and clock tower amid the CBD canyon, and **Marina One**'s green-heart quad in Marina South
 - Fireworks during sunset
 - A Chinook with a Singapore flag orbits at altitude during the day
 - Occasional NDP-style RSAF fighter formation flypast with contrails
@@ -165,7 +167,9 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 Top Sum is set over Marina Bay, and v15 leans in:
 
 - **🇸🇬 Singlish cheers** — streak milestones cheer in Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*). On by default; toggle from the title screen.
-- **🎆 National Day mode** — auto-activates every **Aug 9**, or pin it on year-round from the title-screen toggle. Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, and a short festive fanfare. Want it today? Add `?ndp=1` to the URL (session-only, doesn't change your saved setting).
+- **🎆 National Day mode — on by default (v20)** through the release window. Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, a drone light show over the bay, and a short festive fanfare — plus the city dresses up: **giant flags on the HDB blocks, bunting along Boat Quay, a red-and-white crowd filling the Float grandstand, spectator boats at anchor**. Opt out any time from the 🎆 title-screen toggle (persists), or force it per-session with `?ndp=1` / `?ndp=0`.
+- **🪂 Red Lions jump** — every couple of minutes in National Day mode, a transport runs a pass high over the bay, the stick steps off trailing red smoke, canopies pop, and the team steers down onto the Float platform — the real NDP landing point.
+- **🇸🇬 National Day countdown** — through the ~6-week run-up to Aug 9 the title screen counts down the days (with the year's SG-number). Tap it to preview National Day mode for the current session.
 - **Streak-10 RSAF salute** — hold a 10-streak and a low formation pass roars over the bay in your honour.
 
 ### 🎮 Built for Desktop + Mobile
@@ -177,7 +181,7 @@ Top Sum is set over Marina Bay, and v15 leans in:
 
 ### 🚀 Progression & Unlocks
 - High-score persistence (localStorage, no signup)
-- **Sunset Mode** unlocks at 1000 points with a cinematic celebration
+- **Sunset Mode** unlocks at 400 points, **Night Flight** at 700 — each with a cinematic celebration
 - Streak milestones with visual rewards
 - Score sharing (Web Share API, with clipboard fallback)
 
@@ -204,7 +208,7 @@ Top Sum is set over Marina Bay, and v15 leans in:
 | `← ↑ → ↓` or `WASD` | Steer |
 | `M` | Toggle sound |
 | `C` | Toggle auto-center |
-| `T` | Toggle Day / Sunset |
+| `T` | Cycle Day / Sunset / Night |
 | `X` | Cycle Speed Mode (Off → Fast → Faster) |
 | `Z` | Fire ZOOOM (when charged) |
 | `Esc` | Pause / resume |

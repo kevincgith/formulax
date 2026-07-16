@@ -470,13 +470,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a0e2e">
 <title>Top Sum · Math Flight Over Marina Bay</title>
-<meta name="description" content="A friendly math game for kids. Fly through the right answer over Marina Bay, Singapore. Built for ages 4 and up. Made for my kids.">
+<meta name="description" content="An arcade math-flight game over Marina Bay, Singapore. Steer through the right answer, chain streaks into cinematic flow, unlock faster jets — moreish for kids and grown-ups alike. Free, no signup, plays in your browser.">
 
 <!-- Open Graph (LinkedIn, Facebook, WhatsApp, iMessage, etc.) -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mli3w.github.io/top-sum/">
 <meta property="og:title" content="Top Sum · Math Flight Over Marina Bay">
-<meta property="og:description" content="A friendly math game for kids. Fly through the right answer over Marina Bay. Made for my kids.">
+<meta property="og:description" content="Fly through the right answer over Marina Bay — build streaks, ride the flow, unlock jets, then challenge a friend on the exact same run. Arcade math joy for kids and adults. Free in your browser.">
 <meta property="og:image" content="https://mli3w.github.io/top-sum/top-sum-screengrab1.png">
 <meta property="og:image:width" content="1074">
 <meta property="og:image:height" content="654">
@@ -486,7 +486,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="https://mli3w.github.io/top-sum/">
 <meta name="twitter:title" content="Top Sum · Math Flight Over Marina Bay">
-<meta name="twitter:description" content="A friendly math game for kids. Fly through the right answer.">
+<meta name="twitter:description" content="Fly through the right answer over Marina Bay. Build streaks into cinematic flow and challenge a friend — arcade math fun for kids and grown-ups.">
 <meta name="twitter:image" content="https://mli3w.github.io/top-sum/top-sum-screengrab1.png">
 <meta name="twitter:image:alt" content="Sunset gameplay over Marina Bay — Top Sum math flight, Flow ×4 streak">
 
@@ -1421,6 +1421,29 @@
   }
   #title .best-pill.show { display: block; }
 
+  /* v19.x: National Day countdown chip — appears in the ~6-week run-up to
+     Aug 9 and on the day itself. A tap previews National Day mode for this
+     session only (same semantics as ?ndp=1 — never written to storage). */
+  #title .ndp-countdown {
+    display: none;
+    margin-bottom: clamp(10px, 2.2vw, 14px);
+    padding: 7px 16px;
+    background: rgba(216, 35, 42, 0.16);
+    border: 1px solid rgba(255, 120, 130, 0.45);
+    border-radius: var(--r-pill);
+    font-size: clamp(11px, 2.4vw, 13px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffd9dc;
+    cursor: pointer;
+    font-family: inherit;
+    touch-action: manipulation;
+    transition: background 0.15s;
+  }
+  #title .ndp-countdown.show { display: block; }
+  #title .ndp-countdown:hover, #title .ndp-countdown:active { background: rgba(216, 35, 42, 0.3); }
+  #title .ndp-countdown:disabled { cursor: default; }
+
   /* 2×2 level grid — the real CTA, above the fold. All four gold-family so
      no single level reads as pre-selected. */
   .diff-row {
@@ -2218,7 +2241,7 @@
        in-flight mood switch, not a set-and-forget. Shares the .time-btn class
        with the pause-card button so both icons update together. -->
   <div id="icon-settings">
-    <button class="icon-btn time-btn" id="btn-time-hud" title="Toggle day / sunset">☀</button>
+    <button class="icon-btn time-btn" id="btn-time-hud" title="Cycle time of day">☀</button>
     <button class="icon-btn" id="btn-speed"    title="Toggle Speed Mode (50% faster)">⚡</button>
     <button class="icon-btn" id="btn-controls" title="Switch controls">🕹</button>
     <button class="icon-btn" id="btn-pause"    title="Pause">⏸</button>
@@ -2294,6 +2317,8 @@
       </div>
     </div>
     <div class="topgun-subtitle">MATH FLIGHT · MARINA BAY</div>
+    <!-- v19.x: National Day countdown — populated at boot, hidden outside the run-up window -->
+    <button id="ndp-countdown" class="ndp-countdown" type="button"></button>
     <div class="best-pill" id="title-best">★ BEST: 0</div>
     <div class="title-unlock-hint" id="title-unlock-hint" style="display:none"></div>
 
@@ -2329,6 +2354,7 @@
         <span class="picker-label">Time</span>
         <label><input type="radio" name="timeofday" value="day"><span>☀ Day</span></label>
         <label class="sunset-opt"><input type="radio" name="timeofday" value="sunset"><span>🌅 Sunset</span></label>
+        <label class="night-opt"><input type="radio" name="timeofday" value="night"><span>🌃 Night</span></label>
       </div>
       <div id="speed-picker" class="seg" role="radiogroup" aria-label="Speed mode">
         <span class="picker-label">Speed</span>
@@ -2397,7 +2423,7 @@
       <div class="pause-toggles">
         <button class="icon-btn" id="btn-sound"  title="Toggle sound">🔊</button>
         <button class="icon-btn" id="btn-center" title="Toggle auto-center">⊕</button>
-        <button class="icon-btn time-btn" id="btn-time" title="Toggle day / sunset">☀</button>
+        <button class="icon-btn time-btn" id="btn-time" title="Cycle time of day">☀</button>
       </div>
       <button class="diff-btn" id="pause-resume">Resume</button>
       <button class="diff-btn btn-secondary" id="pause-restart">Restart</button>
@@ -2502,9 +2528,16 @@
   // window.festiveActive() during construction — the old param block (the
   // ?c= challenge read) runs far too late for them. Date is cached at boot:
   // festiveActive() runs inside per-frame ticks.
-  let forceFestive = false;
+  // v20: PERPETUAL NDP — festive is now the DEFAULT look through the release
+  // window, not an Aug-9-only event. Priority: ?ndp force-param (1 = on,
+  // 0 = off; session-only, never written to storage) → explicit checkbox
+  // choice (topsum_festive '1'/'0') → ON. The 🎆 toggle and ?ndp=0 are the
+  // escape hatches if the red/white look needs to be cut back later.
+  let forceFestive = null;   // null = no param, true = ?ndp=1, false = ?ndp=0
   try {
-    forceFestive = new URLSearchParams(location.search).get('ndp') === '1';
+    const v = new URLSearchParams(location.search).get('ndp');
+    if (v === '1') forceFestive = true;
+    else if (v === '0') forceFestive = false;
   } catch (e) {}
   const bootIsAug9 = (() => {
     const d = new Date();
@@ -2512,9 +2545,9 @@
   })();
   let festiveFanfarePlayed = false;   // Sound.festive() fires once per session
   function festiveActive() {
-    if (forceFestive) return true;
+    if (forceFestive !== null) return forceFestive;
     if (Settings.festive !== null) return Settings.festive;
-    return bootIsAug9;
+    return true;   // v20: perpetual National Day mode (was: bootIsAug9)
   }
   window.festiveActive = festiveActive;   // supersedes the Part C7 stub
   // Flip the UI accent tokens (body.festive, Part B token override) and make
@@ -2536,7 +2569,7 @@
     timeOfDay: 'day',
     speedMode: 0,   // v13.1: 0 = Off, 1 = Fast (1.5×), 2 = Faster (1.85×)
     singlish: true, // Part A: Singlish streak cheers, default ON
-    festive: null,  // Part A: tri-state — true/false explicit, null = auto-by-Aug-9
+    festive: null,  // tri-state — true/false explicit, null = default ON (v20 perpetual NDP)
     load() {
       let savedControl = null;
       try {
@@ -2549,7 +2582,7 @@
         if (ac !== null) this.autoCenter = ac === '1';
         if (sn !== null) this.sound = sn === '1';
         if (ct === 'joystick' || ct === 'dpad') { this.control = ct; savedControl = ct; }
-        if (td === 'day' || td === 'sunset') this.timeOfDay = td;
+        if (td === 'day' || td === 'sunset' || td === 'night') this.timeOfDay = td;
         // v13.1: speedMode is now 0/1/2. Old saves stored '0' or '1' as the
         // boolean toggle — those map cleanly onto Off / Fast tiers.
         if (sp !== null) {
@@ -2599,9 +2632,9 @@
         time:       this.timeOfDay,
         speedmode:  String(this.speedMode | 0),
         singlish:   this.singlish ? '1' : '0',
-        // Part A: null = auto mode — keep the key absent so Aug 9 keeps
-        // working in future years. ?ndp=1 never touches this (forceFestive
-        // is session state, not a Settings field).
+        // null = default mode (v20: festive ON unless the user opts out).
+        // ?ndp=1/?ndp=0 never touch this (forceFestive is session state,
+        // not a Settings field).
         festive:    this.festive === null ? null : (this.festive ? '1' : '0')
       };
       persistAsync(() => {
@@ -2639,7 +2672,7 @@
       c.className = 'state' + (this.autoCenter ? '' : ' off');
       s.textContent = this.sound ? 'ON' : 'OFF';
       s.className = 'state' + (this.sound ? '' : ' off');
-      ti.textContent = this.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY';
+      ti.textContent = this.timeOfDay === 'night' ? 'NIGHT' : (this.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY');
       ti.className = 'state';
       if (sp) {
         sp.textContent = SPEED_MODE_LABELS[this.speedMode] || 'OFF';
@@ -2653,7 +2686,7 @@
       bc.classList.toggle('off', !this.autoCenter);
       // v18: both day/sunset buttons (HUD + pause card) share .time-btn
       document.querySelectorAll('.time-btn').forEach(b => {
-        b.textContent = this.timeOfDay === 'sunset' ? '🌅' : '☀';
+        b.textContent = this.timeOfDay === 'night' ? '🌃' : (this.timeOfDay === 'sunset' ? '🌅' : '☀');
       });
       if (bsp) {
         bsp.textContent = SPEED_MODE_ICONS[this.speedMode] || '⚡';
@@ -2677,7 +2710,10 @@
   } catch(e){}
   const UNLOCK_LADDER = [
     { id: 'sunset', name: 'Sunset Mode', icon: '🌅', threshold: 400,
-      desc: 'Fly into the magic-hour sky.' }
+      desc: 'Fly into the magic-hour sky.' },
+    // v20: the parade setting — the city lights carry the whole scene
+    { id: 'night', name: 'Night Flight', icon: '🌃', threshold: 700,
+      desc: 'The city lights come out.' }
   ];
   function isUnlocked(id) { return !!unlocks[id]; }
   function grantUnlock(id) {
@@ -2766,11 +2802,12 @@
   document.querySelectorAll('input[name=timeofday]').forEach(r => {
     r.addEventListener('change', e => {
       if (e.target.checked) {
-        if (e.target.value === 'sunset' && !isUnlocked('sunset')) {
+        const locked = UNLOCK_LADDER.find(u => u.id === e.target.value && !isUnlocked(u.id));
+        if (locked) {
           // Revert
           e.target.checked = false;
           document.querySelector('input[name=timeofday][value=day]').checked = true;
-          showToast('🔒 Hit 400 to unlock SUNSET');
+          showToast('🔒 Hit ' + locked.threshold + ' to unlock ' + locked.name.toUpperCase());
           return;
         }
         Settings.timeOfDay = e.target.value;
@@ -2928,15 +2965,31 @@
   scene.add(hemi);
   scene.fog = new THREE.Fog(0xc4ddef, 700, 2400);
 
-  const waterSeg = isMobilePerf ? 22 : 40;
+  // v20: waves moved onto the GPU — the same two displacement terms the old
+  // per-frame CPU loop computed (plus a small high-frequency ripple that was
+  // too expensive to afford on the CPU), injected into the Phong vertex
+  // shader via onBeforeCompile. Kills the ~1.7k-vertex JS loop AND the full
+  // position-buffer re-upload every frame, which paid for raising the mesh
+  // density (40→96 desktop, 22→40 mobile) for a finer sun-glint.
+  const waterSeg = isMobilePerf ? 40 : 96;
   const waterGeo = new THREE.PlaneGeometry(4000, 4000, waterSeg, waterSeg);
   waterGeo.rotateX(-Math.PI / 2);
-  // Clean stylized water: the per-vertex wave displacement in the loop carries the
-  // motion; a softer specular gives one broad sun-glint instead of harsh hotspots.
-  // (A canvas normalMap was tried in v19 but tiled into big soft blobs — removed.)
+  // Clean stylized water: a softer specular gives one broad sun-glint
+  // instead of harsh hotspots. (A canvas normalMap was tried in v19 but
+  // tiled into big soft blobs — removed.)
+  const waterTime = { value: 0 };
   const waterMat = new THREE.MeshPhongMaterial({
     color: 0x1d5a8a, shininess: 70, specular: 0x7fa6c4
   });
+  waterMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = waterTime;   // shared object — survives recompiles
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        transformed.y += sin(transformed.x * 0.02 + uTime * 1.2) * 0.6
+                       + cos(transformed.z * 0.025 + uTime * 0.8) * 0.5
+                       + sin(transformed.x * 0.11 + transformed.z * 0.13 + uTime * 2.1) * 0.12;`);
+  };
   const water = new THREE.Mesh(waterGeo, waterMat);
   water.receiveShadow = true;
   water.position.y = -0.05;
@@ -2948,10 +3001,58 @@
     supertreeLights: [],
     supertreeFlowers: [],
     helixMats: [],         // cool-blue glow at dusk (Helix Bridge spirals)
+    smearStrips: [],       // v20: fake shoreline reflections (sunset/night)
     pathTubeMat: null,
     gateScheme: { ringColor: 0xee3344, ringEmissive: 0xff4422, ringEmissiveIntensity: 0.30,
                   diskColor: 0xffeebb, diskOpacity: 0.20, lightColor: 0xff5566 }
   };
+
+  // === v20: LIGHT-SMEAR "REFLECTIONS" (sunset / night) ===
+  // The Marina Bay postcard is the lit skyline smeared into the water. Real
+  // planar reflection is far too expensive here; instead three additive
+  // strips float just off the lit shores (CBD east face, MBS west face, the
+  // Esplanade/Float north shore), each showing vertical light streaks that
+  // point into the bay. One shared 128² canvas texture, one draw call per
+  // strip, visibility + opacity driven by applyTimeOfDay, gentle per-strip
+  // shimmer in update(). Streak palette mixes gold/white/red so it reads
+  // right in both festive and plain dusk.
+  {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const cx = c.getContext('2d');
+    const hues = ['255,205,110', '255,240,220', '255,150,80', '255,80,90', '160,200,255'];
+    for (let i = 0; i < 46; i++) {
+      const x = Math.random() * 128, w = 1 + Math.random() * 2.5;
+      const len = 30 + Math.random() * 80, y0 = Math.random() * (128 - len);
+      const hue = hues[Math.floor(Math.random() * hues.length)];
+      const grad = cx.createLinearGradient(0, y0, 0, y0 + len);
+      grad.addColorStop(0, 'rgba(' + hue + ',0)');
+      grad.addColorStop(0.5, 'rgba(' + hue + ',' + (0.25 + Math.random() * 0.3) + ')');
+      grad.addColorStop(1, 'rgba(' + hue + ',0)');
+      cx.fillStyle = grad;
+      cx.fillRect(x, y0, w, len);
+    }
+    const smearTex = new THREE.CanvasTexture(c);
+    // [x, z, alongShore, streakLen, rotY] — v (streak) axis points offshore
+    const strips = [
+      [-138,  40, 200, 58, Math.PI / 2],   // CBD / Collyer Quay east face
+      [ 112,  95, 130, 55, Math.PI / 2],   // MBS west face
+      [   0, -166, 220, 50, 0]             // Esplanade + Float north shore
+    ];
+    for (const [sx, sz, along, len, rotY] of strips) {
+      const mat = new THREE.MeshBasicMaterial({
+        map: smearTex, transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false, fog: false
+      });
+      const geo = new THREE.PlaneGeometry(along, len);
+      geo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.y = rotY;
+      mesh.position.set(sx, 0.9, sz);
+      mesh.visible = false;
+      scene.add(mesh);
+      timeAware.smearStrips.push({ mesh, mat, base: 0.22 });
+    }
+  }
 
   // Part C: late-bound ambient systems that applyTimeOfDay also drives.
   // Declared up front (filled in during world build, before Settings.load()
@@ -2962,12 +3063,52 @@
   let _lastFestive = false;
 
   function applyTimeOfDay() {
-    const sunset = Settings.timeOfDay === 'sunset';
+    // v20: three presets — 'day', 'sunset', and the new 'night'. Night is
+    // the parade setting: near-black blue sky with a city-glow horizon, cool
+    // moonlight, and every emissive system carrying the scene.
+    const mode = Settings.timeOfDay;
+    const sunset = mode === 'sunset', night = mode === 'night';
+    const lit = sunset || night;   // "the lights are on"
     // v19: run dusk a touch darker so the additive lights (windows, gates, sun
     // glitter, drones) pop against a deeper purple base instead of riding the
     // ACES shoulder toward grey. Day stays at the neutral-ish 1.1.
-    if (renderer) renderer.toneMappingExposure = sunset ? 0.95 : 1.1;
-    if (sunset) {
+    if (renderer) renderer.toneMappingExposure = night ? 0.9 : (sunset ? 0.95 : 1.1);
+    // Firework glow (tickFireworks) lerps the water emissive from these bases.
+    if (night) {
+      skyMat.uniforms.topColor.value.setHex(0x060a18);
+      skyMat.uniforms.bottomColor.value.setHex(0x1c2542);
+      sun.color.setHex(0x9fb4e0);                 // moonlight
+      sun.intensity = 0.32;
+      sun.position.set(-300, 500, -200);
+      ambient.color.setHex(0x2a3450);
+      ambient.intensity = 0.5;
+      hemi.color.setHex(0x36426a);
+      hemi.groundColor.setHex(0x0a0e18);
+      hemi.intensity = 0.4;
+      scene.fog.color.setHex(0x0d1424);
+      scene.fog.near = 400; scene.fog.far = 1600;
+      waterMat.color.setHex(0x0d2036);
+      waterMat.specular.setHex(0x9fb8dd);
+      waterMat.emissive.setHex(0x0a1226);
+      waterMat.emissiveIntensity = 0.22;
+      waterMat.userData.baseEmissive = 0x0a1226;
+      waterMat.userData.baseEmiInt = 0.22;
+      if (window._sunSprite) {
+        // the sun sprite moonlights: small cool disc, opposite sky corner
+        window._sunSprite.position.copy(new THREE.Vector3(-300, 500, -200).normalize()).multiplyScalar(2100);
+        window._sunSprite.scale.setScalar(170);
+        window._sunSprite.material.color.setHex(0xb8ccf5);
+        window._sunSprite.material.opacity = 0.55;
+      }
+      // Night gate scheme: bright warm gold — emissive does all the work
+      timeAware.gateScheme = { ringColor: 0xffdd55, ringEmissive: 0xffaa22,
+        ringEmissiveIntensity: 1.0, diskColor: 0xffeebb, diskOpacity: 0.08,
+        lightColor: 0xffcc55 };
+      if (timeAware.pathTubeMat) {
+        timeAware.pathTubeMat.color.setHex(0x44ffff);
+        timeAware.pathTubeMat.opacity = 0.22;
+      }
+    } else if (sunset) {
       // D5: tuned against the dusk reference photos — horizon pulled toward
       // golden-amber (old 0xff8855 blended with 0xffb066), upper sky toward
       // purple-magenta (old 0x4a3868 blended with 0x6a4a8c). A nudge, not a
@@ -2990,11 +3131,14 @@
       scene.fog.near = 420; scene.fog.far = 1700;
       waterMat.color.setHex(0x4a4070);
       waterMat.specular.setHex(0xffaa66);
-      waterMat.emissive = new THREE.Color(0x2a1a4a);
+      waterMat.emissive.setHex(0x2a1a4a);
       waterMat.emissiveIntensity = 0.15;
+      waterMat.userData.baseEmissive = 0x2a1a4a;
+      waterMat.userData.baseEmiInt = 0.15;
       if (window._sunSprite) {
         window._sunSprite.position.copy(new THREE.Vector3(400, 160, 250).normalize()).multiplyScalar(2100);
         window._sunSprite.scale.setScalar(480);
+        window._sunSprite.material.color.setHex(0xffffff);
         window._sunSprite.material.opacity = 0.62;
       }
       // Sunset gate scheme: golden, high emissive (glow does the work)
@@ -3021,12 +3165,15 @@
       scene.fog.near = 750; scene.fog.far = 2500;  // C6: clear tropical day
       waterMat.color.setHex(0x1d5a8a);
       waterMat.specular.setHex(0x99bbdd);
-      if (waterMat.emissive) waterMat.emissive.setHex(0x000000);
+      waterMat.emissive.setHex(0x000000);
       waterMat.emissiveIntensity = 0;
+      waterMat.userData.baseEmissive = 0x000000;
+      waterMat.userData.baseEmiInt = 0;
       if (window._sunSprite) {
         window._sunSprite.position.copy(new THREE.Vector3(400, 600, 250).normalize()).multiplyScalar(2100);
         // small, soft day disc — a gentle high-sun glow, not a hard white ball
         window._sunSprite.scale.setScalar(240);
+        window._sunSprite.material.color.setHex(0xffffff);
         window._sunSprite.material.opacity = 0.5;
       }
       // Day gate scheme: red-coral, low emissive (sun does the work)
@@ -3042,47 +3189,58 @@
     waterMat.needsUpdate = true;
     if (timeAware.pathTubeMat) timeAware.pathTubeMat.needsUpdate = true;
     timeAware.windowMaterials.forEach(m => {
-      if (sunset) { m.emissive.setHex(0xffcc66); m.emissiveIntensity = 0.8; }
-      else        { m.emissive.setHex(0x224466); m.emissiveIntensity = 0.3; }
+      if (night)       { m.emissive.setHex(0xffd580); m.emissiveIntensity = 1.0; }
+      else if (sunset) { m.emissive.setHex(0xffcc66); m.emissiveIntensity = 0.8; }
+      else             { m.emissive.setHex(0x224466); m.emissiveIntensity = 0.3; }
       m.needsUpdate = true;
     });
     timeAware.supertreeLights.forEach(m => {
-      if (sunset) { m.emissive.setHex(0xff8833); m.emissiveIntensity = 1.4; }
-      else        { m.emissive.setHex(0xff7733); m.emissiveIntensity = 0.5; }
+      if (lit) { m.emissive.setHex(0xff8833); m.emissiveIntensity = night ? 1.7 : 1.4; }
+      else     { m.emissive.setHex(0xff7733); m.emissiveIntensity = 0.5; }
       m.needsUpdate = true;
     });
     timeAware.supertreeFlowers.forEach(m => {
-      m.emissiveIntensity = sunset ? 0.85 : 0.4;
+      m.emissiveIntensity = night ? 1.0 : (sunset ? 0.85 : 0.4);
       m.needsUpdate = true;
     });
     // v19: Helix Bridge cool-blue glow at dusk; emissive color stays 0x88bbff
     timeAware.helixMats.forEach(m => {
-      m.emissiveIntensity = sunset ? 0.55 : 0.0;
+      m.emissiveIntensity = night ? 0.7 : (sunset ? 0.55 : 0.0);
       m.needsUpdate = true;
     });
     // C1: shared facade sheets — windows stay glassy by day, ignite at dusk.
     // HDB walls are lighter in the map, so they take a per-material scale to
     // keep the concrete from glowing along with the windows.
     timeAware.facadeMaterials.forEach(m => {
-      m.emissiveIntensity = (sunset ? 0.85 : 0.12) * (m.userData.emiScale || 1);
+      m.emissiveIntensity = (night ? 1.05 : (sunset ? 0.85 : 0.12)) * (m.userData.emiScale || 1);
     });
     // D5: the blue-hour reference photo leads with the lit Esplanade domes —
     // give the spiky shells a faint golden glow at dusk, dead off by day.
     if (timeAware.esplanadeShellMat) {
       timeAware.esplanadeShellMat.emissive.setHex(0xffaa44);
-      timeAware.esplanadeShellMat.emissiveIntensity = sunset ? 0.25 : 0;
+      timeAware.esplanadeShellMat.emissiveIntensity = night ? 0.35 : (sunset ? 0.25 : 0);
     }
     // C5: traffic reads as dark specks by day, additive light streams at dusk
     if (trafficPts) {
-      trafficPts.material = sunset ? trafficNightMat : trafficDayMat;
+      trafficPts.material = lit ? trafficNightMat : trafficDayMat;
     }
+    // v20: fake shoreline reflections — on whenever the skyline is lit,
+    // stronger against the night water. update() adds the shimmer.
+    timeAware.smearStrips.forEach(s => {
+      s.mesh.visible = lit;
+      s.base = night ? 0.3 : 0.22;
+      s.mat.opacity = s.base;
+    });
     // C7: festive flip — repaint the facade canvases and beacon colors once
     // per toggle (not per call), then let the tick functions take it from here
     const fest = window.festiveActive();
     // D3: shoreline garland — the glowing promenade rim that every dusk
-    // reference photo leads with. On at sunset, on when festive (National
-    // Day mode re-calls _applyTimeOfDay), invisible in plain daylight.
-    if (garlandPts) garlandPts.visible = sunset || fest;
+    // reference photo leads with. On at sunset/night, on when festive
+    // (National Day mode re-calls _applyTimeOfDay), invisible in daylight.
+    if (garlandPts) garlandPts.visible = lit || fest;
+    // v20: NDP set dressing (HDB flags, bunting, Float crowd, spectator
+    // boats) rides festive state — the 🎆 toggle / ?ndp=0 strip it live.
+    if (window._festiveDressing) window._festiveDressing.visible = fest;
     if (fest !== _lastFestive) {
       _lastFestive = fest;
       if (window._regenFacades) window._regenFacades();
@@ -3563,7 +3721,13 @@
     timeAware.windowMaterials.push(winMat);
     const skyparkMat = new THREE.MeshPhongMaterial({ color: 0x6e6a62 });
     const trimMat = new THREE.MeshPhongMaterial({ color: 0xa8a4a0 });
-    const poolMat = new THREE.MeshPhongMaterial({ color: 0x66ddee, emissive: 0x336688, emissiveIntensity: 0.5, shininess: 200 });
+    // v20: the infinity pool — a vivid turquoise strip that glows at all
+    // hours and becomes THE beacon of the skim at night (players pass metres
+    // over it every lap). High emiScale so it keeps a real cyan glow even by
+    // day: emiScale 2.6 → 0.31 day / 2.21 sunset / 2.73 night.
+    const poolMat = new THREE.MeshPhongMaterial({ color: 0x2ec8e6, emissive: 0x1fb0d8, emissiveIntensity: 0.6, shininess: 220 });
+    poolMat.userData.emiScale = 2.6;
+    timeAware.facadeMaterials.push(poolMat);
     const gardenMat = new THREE.MeshPhongMaterial({ color: 0x4a6a4a });
     const towerH = 110;
     for (let i = 0; i < 3; i++) {
@@ -3613,8 +3777,24 @@
     // trim cap reaches the prow tip (x≈59) and tucks just inside the ±14 deck edge
     const trim = new THREE.Mesh(new THREE.BoxGeometry(spLen + 27, 0.5, spW + 2), trimMat);
     trim.position.set(7, towerH + spH - 0.1, 0); g.add(trim);
-    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 8, 0.4, 7), poolMat);
-    pool.position.set(0, towerH + spH + 0.2, 5.5); g.add(pool);
+    // v20: wide infinity pool filling the bay half of the deck, framed by a
+    // bright white infinity-edge lip on the bay side.
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(spLen - 6, 0.5, 11), poolMat);
+    pool.position.set(0, towerH + spH + 0.25, 6.5); g.add(pool);
+    const rimMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 60,
+      emissive: 0xffffff, emissiveIntensity: 0.15 });
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(spLen - 5, 0.7, 0.9), rimMat);
+    rim.position.set(0, towerH + spH + 0.35, 12.3); g.add(rim);
+    // A row of bright red/white parasols along the garden side — the deck's
+    // one hit of colour against the pale slab, reads instantly from above.
+    const parasolMats = [0xe23b3b, 0xf5f2ea, 0xe23b3b, 0xf5f2ea, 0xe23b3b].map(c =>
+      new THREE.MeshPhongMaterial({ color: c, shininess: 20 }));
+    for (let ci = 0; ci < 5; ci++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.6, 5), trimMat);
+      post.position.set(-26 + ci * 13, towerH + spH + 0.8, -3); g.add(post);
+      const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.1, 8), parasolMats[ci]);
+      canopy.position.set(-26 + ci * 13, towerH + spH + 1.9, -3); g.add(canopy);
+    }
     const garden = new THREE.Mesh(new THREE.BoxGeometry(spLen - 12, 0.3, 6), gardenMat);
     garden.position.set(0, towerH + spH + 0.2, -7); g.add(garden);
 
@@ -4227,25 +4407,65 @@
   // Rows of pastel two-storey shophouses with dark caps hugging the river
   // banks — the splash of colour every Singapore River photo has. Visual
   // only (≤11 high; the path floor over the river is ~69).
+  // v20: concatenate pre-transformed indexed geometries with identical
+  // attribute layouts into one BufferGeometry — the hand-rolled equivalent
+  // of BufferGeometryUtils.mergeBufferGeometries (an examples module, not in
+  // the three.min core). Used to collapse static repeated dressing (the 49
+  // shophouses were 98 meshes / ~49 materials → 10 meshes / 2 materials).
+  function mergeStaticGeos(geos) {
+    const names = Object.keys(geos[0].attributes);
+    let vTot = 0, iTot = 0;
+    geos.forEach(g => { vTot += g.attributes.position.count; iTot += g.index.count; });
+    const out = new THREE.BufferGeometry();
+    for (const name of names) {
+      const itemSize = geos[0].attributes[name].itemSize;
+      const arr = new Float32Array(vTot * itemSize);
+      let off = 0;
+      geos.forEach(g => { arr.set(g.attributes[name].array, off); off += g.attributes[name].array.length; });
+      out.setAttribute(name, new THREE.BufferAttribute(arr, itemSize));
+    }
+    const idx = new (vTot > 65535 ? Uint32Array : Uint16Array)(iTot);
+    let io = 0, vo = 0;
+    geos.forEach(g => {
+      for (let i = 0; i < g.index.count; i++) idx[io + i] = g.index.getX(i) + vo;
+      io += g.index.count; vo += g.attributes.position.count;
+    });
+    out.setIndex(new THREE.BufferAttribute(idx, 1));
+    geos.forEach(g => g.dispose());
+    return out;
+  }
+  // v20: shared row materials — one vertex-colored Phong for every pastel
+  // body in the world, one clay for every cap.
+  const shopBodyMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 15 });
+  const shopCapMat  = new THREE.MeshPhongMaterial({ color: 0x7a4438, shininess: 10 });
   function buildShophouseRow(x, z, n, rotationY) {
+    // v20: one merged vertex-colored mesh for the bodies + one for the caps
+    // (was: 2 meshes and a fresh material per house).
     const g = new THREE.Group();
     const palette = [0xf2c8a2, 0xe89aa4, 0xa8c8e0, 0xf2e0b0, 0xb8d8b0, 0xe0b8d8];
-    const capMat = new THREE.MeshPhongMaterial({ color: 0x7a4438, shininess: 10 });
+    const bodies = [], caps = [];
+    const col = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const h = 8 + (i * 3) % 3;
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(7, h, 9),
-        new THREE.MeshPhongMaterial({ color: palette[i % palette.length], shininess: 15 }));
-      body.position.set(i * 7.5, h / 2, 0);
-      body.castShadow = true; body.receiveShadow = true;
-      g.add(body);
+      const body = new THREE.BoxGeometry(7, h, 9);
+      body.translate(i * 7.5, h / 2, 0);
+      col.setHex(palette[i % palette.length]);
+      const vc = new Float32Array(body.attributes.position.count * 3);
+      for (let v = 0; v < vc.length; v += 3) { vc[v] = col.r; vc[v+1] = col.g; vc[v+2] = col.b; }
+      body.setAttribute('color', new THREE.BufferAttribute(vc, 3));
+      bodies.push(body);
       // squat pyramid cap reads as a pitched clay roof from flight altitude
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(5.4, 2.4, 4), capMat);
-      cap.position.set(i * 7.5, h + 1.2, 0);
-      cap.rotation.y = Math.PI / 4;
-      cap.castShadow = true;
-      g.add(cap);
+      const cap = new THREE.ConeGeometry(5.4, 2.4, 4);
+      cap.rotateY(Math.PI / 4);
+      cap.translate(i * 7.5, h + 1.2, 0);
+      caps.push(cap);
     }
+    const bodyMesh = new THREE.Mesh(mergeStaticGeos(bodies), shopBodyMat);
+    bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
+    g.add(bodyMesh);
+    const capMesh = new THREE.Mesh(mergeStaticGeos(caps), shopCapMat);
+    capMesh.castShadow = true;
+    g.add(capMesh);
     g.rotation.y = rotationY || 0;
     g.position.set(x, 0, z); return g;
   }
@@ -4649,6 +4869,68 @@
   // Sheares viaduct get colliders.
   scene.add(buildShophouseRow(-282, -84, 13, 0));            // Boat Quay (south bank)
   scene.add(buildShophouseRow(-295, -134, 7, 0));            // Clarke Quay (north bank)
+  // === v20: SINGAPORE RIVER BRIDGES ===
+  // Three bridges spanning the Singapore River notch (the water hole runs
+  // x≈-168..-300 between the north bank at z≈-93..-100 and the south bank at
+  // z≈-128..-136). Each deck runs NORTH-SOUTH (rotY=π/2, local +x → world z)
+  // and is sized to overhang ~4 units onto BOTH banks, so no end floats in
+  // the water. Centred on the bumboat cruise line (route z≈-114) so the boat
+  // passes underneath. Placed WELL upstream of the river mouth (x≤-195), so
+  // the water in front of the Merlion (mouth ≈ x-168) stays open — no more
+  // bridge stranded at an angle in the bay. Visual only (deck y=5; the path
+  // floor over the river is ~69).
+  function buildRiverBridge(x, zCenter, len, style) {
+    const g = new THREE.Group();
+    const white = new THREE.MeshPhongMaterial({ color: 0xe8e4da, shininess: 40 });
+    const grey  = new THREE.MeshPhongMaterial({ color: 0xa9a49a, shininess: 20 });
+    const deckW = style === 'suspension' ? 3.4 : 4.6;   // along-river width
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(len, 0.8, deckW), white);
+    deck.position.y = 5; deck.castShadow = true; g.add(deck);
+    // stone abutments at the two deck ends — these sit on the banks
+    for (const px of [-len / 2 + 2, len / 2 - 2]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(3.2, 5, deckW + 1.4), grey);
+      pier.position.set(px, 2.5, 0); g.add(pier);
+    }
+    if (style === 'arch') {
+      // two white steel arches rising over the deck edges (Anderson)
+      for (const pz of [-deckW / 2, deckW / 2]) {
+        const arch = new THREE.Mesh(
+          new THREE.TorusGeometry(len * 0.40, 0.35, 5, 16, Math.PI), white);
+        arch.position.set(0, 5.2, pz); arch.castShadow = true; g.add(arch);
+      }
+      // a couple of hangers so the arches read as structural
+      for (const hx of [-len * 0.22, 0, len * 0.22]) {
+        const h = 3.2 + (hx === 0 ? 1.4 : 0);
+        const hang = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, deckW), white);
+        hang.position.set(hx, 5.6 + h / 2, 0); g.add(hang);
+      }
+    } else if (style === 'suspension') {
+      // four grey-green portal posts + crossbars (Cavenagh)
+      const green = new THREE.MeshPhongMaterial({ color: 0x5a6a58, shininess: 25 });
+      for (const px of [-len / 2 + 5, len / 2 - 5]) {
+        for (const pz of [-1.8, 1.8]) {
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.5, 0.9), green);
+          post.position.set(px, 8.2, pz); g.add(post);
+        }
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 4.8), green);
+        bar.position.set(px, 11.2, 0); g.add(bar);
+      }
+    } else {
+      // plain beam bridge with low white balustrades (Elgin)
+      for (const pz of [-deckW / 2 - 0.2, deckW / 2 + 0.2]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 4, 0.6, 0.35), white);
+        rail.position.set(0, 5.7, pz); g.add(rail);
+      }
+    }
+    g.rotation.y = Math.PI / 2;   // deck spans north-south across the river
+    g.position.set(x, 0, zCenter);
+    return g;
+  }
+  // [x, zCenter, len] — spans computed from the reservoirHole river banks so
+  // each deck lands ~4u onto land at both ends (verified against the notch).
+  scene.add(buildRiverBridge(-195, -115, 50, 'arch'));         // Anderson Bridge
+  scene.add(buildRiverBridge(-235, -114, 43, 'suspension'));   // Cavenagh Bridge
+  scene.add(buildRiverBridge(-272, -114, 37, 'beam'));         // Elgin Bridge
   scene.add(buildCivicDistrict());
   scene.add(buildBarrage());
   scene.add(buildGardenDome(215, 50, 14, 11, 16));           // Cloud Forest
@@ -4711,6 +4993,36 @@
       crown.position.set(x, 0, z); scene.add(crown);
     }
   });
+  // v20: Lau Pa Sat — the octagonal Victorian market hall tucked low between
+  // the canyon rows (its real spot amid the Raffles Place towers). Visual
+  // dressing only: apex ≈19, the canyon path floor is Y≈56 and the gate/drift
+  // envelope bottoms out ≈40 — clear by 20+.
+  {
+    const lps = new THREE.Group();
+    const hall = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 5.5, 8),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf, shininess: 18 }));
+    hall.position.y = 2.75; hall.castShadow = true; lps.add(hall);
+    // v20: vivid pumpkin-orange roof (shared across roof + both caps). Flat
+    // unlit (MeshBasic) on purpose — a lit orange washed to tan under this
+    // scene's bright bluish ambient + ACES; unlit holds a true, punchy orange
+    // that reads instantly from the canyon floor and fits the low-poly style.
+    const lpsRoofMat = new THREE.MeshBasicMaterial({ color: 0xe85d12 });
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(14.5, 6, 8), lpsRoofMat);
+    roof.position.y = 8.5; roof.castShadow = true; lps.add(roof);
+    const lantern = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3, 8),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf }));
+    lantern.position.y = 12.5; lps.add(lantern);
+    const lanternCap = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.4, 8), lpsRoofMat);
+    lanternCap.position.y = 15.2; lps.add(lanternCap);
+    // corner clock tower
+    const clock = new THREE.Mesh(new THREE.BoxGeometry(2.4, 14, 2.4),
+      new THREE.MeshPhongMaterial({ color: 0xded5bf }));
+    clock.position.set(15.5, 7, 9); clock.castShadow = true; lps.add(clock);
+    const clockCap = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.6, 4), lpsRoofMat);
+    clockCap.position.set(15.5, 15.3, 9); clockCap.rotation.y = Math.PI / 4; lps.add(clockCap);
+    lps.position.set(-263, 0, 106);
+    scene.add(lps);
+  }
   // v16.1: Suntec's five towers in their real arc around the Fountain of
   // Wealth, on Marina Centre behind the promenade NW of the Flyer.
   // Tops ≤66; the P10-P11 legs pass well above even at full down-drift.
@@ -4761,6 +5073,27 @@
     scene.add(b);
     addCollider(x, z, w/2 + 3, w/2 + 3, b.userData.totalH + 2);
   });
+  // v20: MARINA ONE — the four dark bronze-green towers around the "green
+  // heart" garden core, filling Marina South's empty quarter south of the
+  // Promontory lawn (whose searchlights sit at (-112,196) — kept clear).
+  // Anchored at (-120, 330): ~55 laterally off the P17→P0 closing leg, so
+  // the gate reach (±23.5) and the hard-drift envelope (±28) both clear by
+  // 16+ — safer margin than the deliberately-clippable canyon rows. Each
+  // tower gets the standard collider anyway.
+  {
+    const m1Mat = makeFacadeMaterial(facadeTexB, 'cbdB', 0x4a5a48, 1);
+    const m1H = [86, 80, 72, 78];
+    [[-15, -15], [15, -15], [-15, 15], [15, 15]].forEach(([ox, oz], i) => {
+      const b = buildBuilding(-120 + ox, 330 + oz, 15, m1H[i], 15, 41 + i * 9, m1Mat);
+      scene.add(b);
+      addCollider(-120 + ox, 330 + oz, 10.5, 10.5, b.userData.totalH + 2);
+    });
+    // the green heart: a lush bowl of canopy between the four towers
+    const heart = new THREE.Mesh(new THREE.SphereGeometry(9, 10, 7),
+      new THREE.MeshPhongMaterial({ color: 0x4a7a44, shininess: 8 }));
+    heart.scale.y = 0.55; heart.position.set(-120, 4, 330);
+    scene.add(heart);
+  }
 
   // === v19: THE PROMONTORY / "THE LAWN" @ MARINA BAY ===
   // The chevron waterfront lawn in front of MBFC — the real home of the bay's
@@ -4822,6 +5155,136 @@
   scene.add(buildAnchoredShips());
   // …and the trees. Two draw calls, after every collider is registered.
   plantGardenCity();
+
+  // === v20: NDP SET DRESSING (festive-gated, default-on) ===
+  // The city dresses up for August: giant flags draped down the HDB block
+  // faces (the real heartland tradition), red/white bunting strung along
+  // the Boat Quay / Clarke Quay shophouse fronts, a red-and-white crowd
+  // filling the Float grandstand arcs, and a small fleet of spectator boats
+  // anchored in the bay off the platform. Everything lives in ONE group
+  // whose visibility applyTimeOfDay ties to festiveActive(), so the 🎆
+  // toggle / ?ndp=0 strip it live. Costs: ~14 flag planes (1 shared
+  // material), 2 Points clouds, 8 two-box boats — all static.
+  {
+    const dress = new THREE.Group();
+    // — wall flag texture (hoist-left, standard hang) —
+    const fc = document.createElement('canvas');
+    fc.width = 128; fc.height = 86;
+    const fx = fc.getContext('2d');
+    fx.fillStyle = '#dc3545'; fx.fillRect(0, 0, 128, 43);
+    fx.fillStyle = '#ffffff'; fx.fillRect(0, 43, 128, 43);
+    fx.beginPath(); fx.arc(30, 21, 13, 0, Math.PI * 2); fx.fill();
+    fx.fillStyle = '#dc3545';
+    fx.beginPath(); fx.arc(35, 21, 11, 0, Math.PI * 2); fx.fill();
+    fx.fillStyle = '#ffffff';
+    const wStar = (cx, cy, r) => {
+      fx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = i * Math.PI * 2 / 5 - Math.PI / 2, a2 = a + Math.PI / 5;
+        if (i === 0) fx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        else fx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        fx.lineTo(cx + Math.cos(a2) * r * 0.4, cy + Math.sin(a2) * r * 0.4);
+      }
+      fx.closePath(); fx.fill();
+    };
+    wStar(55, 14, 3.2); wStar(67, 14, 3.2); wStar(79, 14, 3.2);
+    wStar(60, 25, 3.2); wStar(73, 25, 3.2);
+    const wallFlagMat = new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(fc), side: THREE.DoubleSide
+    });
+    const flagGeo = new THREE.PlaneGeometry(9, 6);
+    // two flags per estate, hung on the two unrotated/least-rotated slabs
+    // (block 1 at local (0,-12) h44, block 4 at (12,12) h46 — see buildHDB)
+    const estates = [[-50, -330], [-310, -230], [-480, -120], [-495, 265], [200, -425]];
+    for (const [ex, ez] of estates) {
+      const fA = new THREE.Mesh(flagGeo, wallFlagMat);
+      fA.position.set(ex + 5.4, 37, ez - 12);
+      fA.rotation.y = Math.PI / 2;
+      dress.add(fA);
+      const fB = new THREE.Mesh(flagGeo, wallFlagMat);
+      fB.position.set(ex + 6.3, 39, ez + 12);
+      fB.rotation.y = -Math.PI / 2;
+      dress.add(fB);
+    }
+    // — bunting along the shophouse fronts (points sag between eaves) —
+    {
+      const spans = [];
+      // [rowX, rowZ, count, frontDz] — fronts face the river
+      for (const [rx, rz, n, dz] of [[-282, -84, 13, -4.8], [-295, -134, 7, 4.8]]) {
+        for (let i = 0; i < n - 1; i++) {
+          spans.push([rx + i * 7.5, rx + (i + 1) * 7.5, rz + dz]);
+        }
+      }
+      const P = 5;                                   // points per span
+      const pos = new Float32Array(spans.length * P * 3);
+      const col = new Float32Array(spans.length * P * 3);
+      let k = 0;
+      for (const [x0, x1, z] of spans) {
+        for (let j = 0; j < P; j++) {
+          const t = (j + 0.5) / P;
+          pos[k * 3] = x0 + (x1 - x0) * t;
+          pos[k * 3 + 1] = 7.4 - Math.sin(Math.PI * t) * 1.3;
+          pos[k * 3 + 2] = z;
+          const red = (k % 2) === 0;
+          col[k * 3] = 1; col[k * 3 + 1] = red ? 0.25 : 1; col[k * 3 + 2] = red ? 0.3 : 1;
+          k++;
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      dress.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 0.9, vertexColors: true, sizeAttenuation: true, fog: true
+      })));
+    }
+    // — the Float crowd: red/white specks terraced up the grandstand arcs —
+    {
+      const N = isMobilePerf ? 150 : 260;
+      const pos = new Float32Array(N * 3);
+      const col = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        const arc = i % 3;
+        const r = 23.5 + arc * 3;
+        const a = (Math.random() * 1.4 - 0.7) * Math.PI;   // land-side sweep
+        pos[i * 3] = 105 + Math.sin(a) * r;
+        pos[i * 3 + 1] = 4.2 + arc * 1.5 + Math.random() * 0.5;
+        pos[i * 3 + 2] = -192 - Math.cos(a) * r;
+        const red = Math.random() < 0.55;
+        col[i * 3] = 1; col[i * 3 + 1] = red ? 0.3 : 0.95; col[i * 3 + 2] = red ? 0.32 : 0.9;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      dress.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 1.15, vertexColors: true, sizeAttenuation: true
+      })));
+    }
+    // — spectator boats anchored off the Float (clear of the cruise routes
+    //   and the platform's southern edge at z≈-162) —
+    {
+      const hullMat = new THREE.MeshPhongMaterial({ color: 0xf0ede4, shininess: 30 });
+      const cabMat = new THREE.MeshPhongMaterial({
+        color: 0xc8b890, emissive: 0xffaa55, emissiveIntensity: 0.35
+      });
+      cabMat.userData.emiScale = 0.9;
+      timeAware.facadeMaterials.push(cabMat);
+      const anchors = [[85, -150, 0.4], [98, -143, 2.1], [110, -150, 1.2], [90, -132, 2.8],
+                       [104, -125, 0.9], [115, -135, 1.7], [82, -120, 2.4], [95, -115, 0.2]];
+      for (const [bx, bz, ry] of anchors) {
+        const boat = new THREE.Group();
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1, 2), hullMat);
+        hull.position.y = 0.6; boat.add(hull);
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 1.5), cabMat);
+        cab.position.y = 1.5; boat.add(cab);
+        boat.rotation.y = ry;
+        boat.position.set(bx, 0, bz);
+        dress.add(boat);
+      }
+    }
+    scene.add(dress);
+    window._festiveDressing = dress;
+    dress.visible = false;   // applyTimeOfDay owns it from the first call
+  }
 
   // === C3: ROOFTOP PROP KIT ===
   // One InstancedMesh of grey boxes scattered over every roof rect collected
@@ -4905,7 +5368,7 @@
     if (!warnBeaconMat) return;
     // Hard on/off blink, dimmer ceiling by time of day; festive mode blinks
     // urgently (the red/white colors themselves flip in refreshBeaconColors)
-    const ceiling = Settings.timeOfDay === 'sunset' ? 1.0 : 0.5;
+    const ceiling = Settings.timeOfDay !== 'day' ? 1.0 : 0.5;
     const rate = window.festiveActive() ? 4.5 : 2.2;
     warnBeaconMat.opacity = (Math.sin(time * rate) > 0.3 ? 1.0 : 0.12) * ceiling;
   }
@@ -5999,9 +6462,11 @@
     celebrationActive = true;
     // Preview: temporarily switch to unlocked mode so they see what they earned
     let restoreMode = null;
-    if (u.id === 'sunset' && Settings.timeOfDay !== 'sunset') {
+    // v20: time-of-day unlocks (sunset, night) preview themselves — the id
+    // doubles as the mode value.
+    if ((u.id === 'sunset' || u.id === 'night') && Settings.timeOfDay !== u.id) {
       restoreMode = Settings.timeOfDay;
-      Settings.timeOfDay = 'sunset';
+      Settings.timeOfDay = u.id;
       applyTimeOfDay();
     }
     document.getElementById('uc-icon').textContent = u.icon;
@@ -6016,11 +6481,11 @@
       document.getElementById('unlock-celebration').classList.remove('show');
       celebrationActive = false;
       // Commit the new mode
-      if (u.id === 'sunset') {
-        document.querySelectorAll('input[name=timeofday]').forEach(r => r.checked = (r.value === 'sunset'));
+      if (u.id === 'sunset' || u.id === 'night') {
+        document.querySelectorAll('input[name=timeofday]').forEach(r => r.checked = (r.value === u.id));
         Settings.save();
         Settings.updateBadges();
-        markSunsetUsed();
+        if (u.id === 'sunset') markSunsetUsed();
       }
       renderUnlockHint();
       setTimeout(playNextUnlock, 200);
@@ -6350,12 +6815,9 @@
         jet.position.copy(_pos);
         jet.rotation.y = yaw;
         // Push current pos onto front of trail buffer; rest shifts back.
+        // v20: copyWithin (native memmove) instead of the element loop.
         const arr = trail.positions;
-        for (let i = TRAIL_LEN - 1; i > 0; i--) {
-          arr[i*3]   = arr[(i-1)*3];
-          arr[i*3+1] = arr[(i-1)*3+1];
-          arr[i*3+2] = arr[(i-1)*3+2];
-        }
+        arr.copyWithin(3, 0, (TRAIL_LEN - 1) * 3);
         arr[0] = _pos.x; arr[1] = _pos.y - 0.4; arr[2] = _pos.z;
         if (trail.count < TRAIL_LEN) trail.count++;
         trail.line.geometry.setDrawRange(0, trail.count);
@@ -6735,13 +7197,15 @@
   }
   function tickFireworks(dt, time) {
     const fest = window.festiveActive();
-    const sunset = Settings.timeOfDay === 'sunset';
+    // v20: 'litSky' covers sunset AND the new night mode — fireworks belong
+    // to both (the parade itself is a night show).
+    const litSky = Settings.timeOfDay !== 'day';
     // Part A: festive days earn fireworks around the clock — and an active
     // ZOOOM keeps its force-fired bursts alive in plain day mode. The
     // !game.zoomActive clause fixes a real v13 bug: day-mode ZOOOM fireworks
     // were force-launched by update() and then reset to idle HERE on the
     // very next frame, so they never rendered.
-    if (!sunset && !fest && !game.zoomActive) {
+    if (!litSky && !fest && !game.zoomActive) {
       fireworks.forEach(f => {
         if (f.pts.visible) f.pts.visible = false;
         f.light.intensity = 0;
@@ -6751,13 +7215,13 @@
     }
     // Auto-launcher runs at sunset or when festive (a plain-day ZOOOM only
     // animates its own force-fired rockets — no ambient cadence).
-    if (sunset || fest) {
+    if (litSky || fest) {
       fwLaunchTimer -= dt;
       if (fwLaunchTimer <= 0) {
         launchFirework();
         // v13: 4-5.5s sunset cadence; Part A: festive daytime runs a touch
         // sparser (5-7s) so the blue sky doesn't read as pure spectacle.
-        fwLaunchTimer = (fest && !sunset) ? 5 + Math.random() * 2
+        fwLaunchTimer = (fest && !litSky) ? 5 + Math.random() * 2
                                           : 4 + Math.random() * 1.5;
       }
     }
@@ -6815,7 +7279,32 @@
         }
       }
     }
+    // v20: the bay answers the sky — while bursts are alive, the water's
+    // emissive lerps from its time-of-day base toward the brightest burst's
+    // color, so the finale flushes the whole reservoir red. Bases are set by
+    // applyTimeOfDay (userData.baseEmissive / baseEmiInt); zero glow restores
+    // them exactly, so day mode stays untouched when nothing is bursting.
+    {
+      let g = 0, gc = null;
+      for (const f of fireworks) {
+        if (f.state !== 'burst') continue;
+        const k = Math.max(0, 1 - f.phaseTime / 1.4) * Math.min(1.5, f.sizeMult);
+        if (k > g) { g = k; gc = f.color; }
+      }
+      const ud = waterMat.userData;
+      if (ud.baseEmissive !== undefined) {
+        waterMat.emissive.setHex(ud.baseEmissive);
+        if (g > 0 && gc) {
+          _fwWaterCol.setRGB(gc[0], gc[1], gc[2]);
+          waterMat.emissive.lerp(_fwWaterCol, Math.min(1, g) * 0.5);
+          waterMat.emissiveIntensity = ud.baseEmiInt + g * 0.3;
+        } else {
+          waterMat.emissiveIntensity = ud.baseEmiInt;
+        }
+      }
+    }
   }
+  const _fwWaterCol = new THREE.Color();
 
   // === v11: MBS SPECTRA LASERS (SUNSET ONLY) ===
   // 8 fanned light cones from the skypark, fading in/out on a 12s/18s cycle.
@@ -6844,7 +7333,7 @@
   let spectraActive = false;
   function tickSpectra(dt, time) {
     // v19: also fire on National Day (image-ref: beams over the bay), not just sunset.
-    if (Settings.timeOfDay !== 'sunset' && !window.festiveActive()) {
+    if (Settings.timeOfDay === 'day' && !window.festiveActive()) {
       spectraBeams.forEach(b => b.mat.opacity = 0);
       spectraActive = false;
       spectraTimer = 0;
@@ -7035,6 +7524,199 @@
     window._tickDroneShow = tickDroneShow;
   }
 
+  // === v19.x: RED LIONS PARACHUTE JUMP (FESTIVE) ===
+  // The other half of every NDP aerial display: a dark-green transport runs a
+  // straight pass high over the bay, the stick steps off trailing red smoke,
+  // freefalls, pops red canopies and steers down onto the Float platform —
+  // the real Red Lions landing point. Festive-only, day AND sunset (the
+  // parade jump is an evening one), roughly every 2 minutes, and purely
+  // decorative: no colliders, no gameplay interaction. ~30 draw calls while
+  // active, zero when idle; mobile drops to 4 jumpers + shorter smoke.
+  {
+    const RL_N = isMobilePerf ? 4 : 6;
+    const RL_TRAIL = isMobilePerf ? 34 : 54;
+    const TX = 105, TZ = -192;   // the Float platform (buildNSSquare anchor)
+    const LAND_Y = 6.9;          // platform top (y=6) + body half-height
+    const ALT = 405;             // drop altitude
+
+    const root = new THREE.Group();
+    root.visible = false;
+    scene.add(root);
+
+    // Transport — a stubby tactical lifter, local +X nose like the jets.
+    const transport = (function() {
+      const g = new THREE.Group();
+      const skin = new THREE.MeshPhongMaterial({ color: 0x5c6b5e, shininess: 30 });
+      const fuse = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.6, 26, 8), skin);
+      fuse.rotation.z = Math.PI / 2; g.add(fuse);
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 6), skin);
+      nose.position.x = 13; nose.scale.set(1.4, 1, 1); g.add(nose);
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(7, 0.5, 34), skin);
+      wing.position.set(1, 2.2, 0); g.add(wing);
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 5.5, 0.4), skin);
+      fin.position.set(-12, 3.4, 0); g.add(fin);
+      const tailplane = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.35, 12), skin);
+      tailplane.position.set(-12, 5.8, 0); g.add(tailplane);
+      root.add(g);
+      return g;
+    })();
+
+    // Jumpers: a tiny dark body + a red canopy rig (hidden in freefall) hung
+    // off four riser lines, plus a per-jumper smoke trail — the same
+    // shift-back line technique as the flypast contrails, tinted SG red.
+    const canopyGeo = new THREE.SphereGeometry(3.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
+    const canopyMat = new THREE.MeshPhongMaterial({ color: 0xd8232a, shininess: 18, side: THREE.DoubleSide });
+    const jBodyGeo = new THREE.BoxGeometry(0.9, 2.0, 0.9);
+    const jBodyMat = new THREE.MeshPhongMaterial({ color: 0x24282c });
+    const riserMat = new THREE.LineBasicMaterial({ color: 0x383430, transparent: true, opacity: 0.85 });
+    const jumpers = [];
+    for (let i = 0; i < RL_N; i++) {
+      const j = new THREE.Group();
+      j.add(new THREE.Mesh(jBodyGeo, jBodyMat));
+      const rig = new THREE.Group();               // canopy + risers swing as one
+      const can = new THREE.Mesh(canopyGeo, canopyMat);
+      can.position.y = 4.6; rig.add(can);
+      const rGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 2.6, 4.4,  0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3(-2.6, 4.4,  0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 0,   4.4,  2.6),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3( 0,   4.4, -2.6)
+      ]);
+      rig.add(new THREE.LineSegments(rGeo, riserMat));
+      rig.visible = false; j.add(rig);
+      j.visible = false; root.add(j);
+      const tp = new Float32Array(RL_TRAIL * 3);
+      const tc = new Float32Array(RL_TRAIL * 3);
+      for (let k = 0; k < RL_TRAIL; k++) {
+        const a = 1 - k / RL_TRAIL;
+        tc[k*3] = a; tc[k*3+1] = a * 0.16; tc[k*3+2] = a * 0.2;
+      }
+      const tGeo = new THREE.BufferGeometry();
+      tGeo.setAttribute('position', new THREE.BufferAttribute(tp, 3));
+      tGeo.setAttribute('color', new THREE.BufferAttribute(tc, 3));
+      tGeo.setDrawRange(0, 0);
+      const trail = new THREE.Line(tGeo, new THREE.LineBasicMaterial({
+        vertexColors: true, transparent: true, opacity: 0.85,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      root.add(trail);
+      jumpers.push({
+        g: j, rig, trail, tPos: tp, tCount: 0,
+        state: 0, vy: 0, hvx: 0, hvz: 0, exitAt: 0, deployY: 0, phaseT: 0,
+        // landing spots fan out across the 30-radius platform so nobody stacks
+        land: new THREE.Vector3(TX + (i - (RL_N - 1) / 2) * 5.5, LAND_Y, TZ + ((i * 37) % 13) - 6)
+      });
+    }
+
+    let active = false, nextAt = 40, startT = 0, dur = 0;
+    const _from = new THREE.Vector3(), _to = new THREE.Vector3(), _dir = new THREE.Vector3();
+
+    function plan(time) {
+      // A straight chord through the sky angled so the exit point sits short
+      // of the Float: freefall forward-carry delivers the stick roughly
+      // overhead and the canopies only steer the last stretch home.
+      const a = Math.random() * Math.PI * 2;
+      _dir.set(Math.cos(a), 0, Math.sin(a));
+      _from.set(TX, ALT, TZ).addScaledVector(_dir, -1150);
+      _to.set(TX, ALT, TZ).addScaledVector(_dir, 1250);
+      dur = 24; startT = time; active = true; root.visible = true;
+      transport.visible = true;
+      transport.rotation.y = Math.atan2(_dir.x, _dir.z) - Math.PI / 2;
+      jumpers.forEach((jp, i) => {
+        jp.state = 0;
+        jp.exitAt = startT + dur * 0.40 + i * 0.6;
+        jp.deployY = 195 + (i % 3) * 14;   // staggered pops read better
+        jp.tCount = 0;
+        jp.trail.geometry.setDrawRange(0, 0);
+        jp.trail.material.opacity = 0.85;
+        jp.trail.visible = true;
+        jp.g.visible = false;
+        jp.rig.visible = false;
+        jp.rig.scale.set(1, 1, 1);
+      });
+    }
+
+    function tick(dt, time) {
+      if (!festiveActive()) {
+        if (active) { active = false; root.visible = false; nextAt = time + 30; }
+        return;
+      }
+      if (!active) { if (time >= nextAt) plan(time); return; }
+      const u = (time - startT) / dur;
+      if (u <= 1) {
+        transport.position.lerpVectors(_from, _to, u);
+        transport.position.y += Math.sin(time * 1.2) * 0.6;
+      } else transport.visible = false;
+
+      let done = u > 1;
+      jumpers.forEach((jp, i) => {
+        if (jp.state === 4) return;
+        done = false;
+        if (jp.state === 0) {
+          if (time >= jp.exitAt && u <= 1) {
+            jp.state = 1;
+            jp.g.visible = true;
+            jp.g.position.copy(transport.position); jp.g.position.y -= 3;
+            jp.vy = -6;
+            const spd = _to.distanceTo(_from) / dur;
+            jp.hvx = _dir.x * spd; jp.hvz = _dir.z * spd;
+            if (i === 0 && game.state === 'playing') showToast('🪂 RED LIONS AWAY!');
+          }
+          return;
+        }
+        const p = jp.g.position;
+        if (jp.state === 1) {
+          // freefall: build toward terminal velocity, forward carry bleeds off
+          jp.vy += (-72 - jp.vy) * Math.min(1, dt * 1.4);
+          jp.hvx *= Math.max(0, 1 - dt * 0.75);
+          jp.hvz *= Math.max(0, 1 - dt * 0.75);
+          p.x += jp.hvx * dt; p.z += jp.hvz * dt; p.y += jp.vy * dt;
+          const arr = jp.tPos;
+          arr.copyWithin(3, 0, (RL_TRAIL - 1) * 3);
+          arr[0] = p.x; arr[1] = p.y + 1; arr[2] = p.z;
+          if (jp.tCount < RL_TRAIL) jp.tCount++;
+          jp.trail.geometry.setDrawRange(0, jp.tCount);
+          jp.trail.geometry.attributes.position.needsUpdate = true;
+          if (p.y <= jp.deployY) { jp.state = 2; jp.rig.visible = true; jp.phaseT = time; }
+          return;
+        }
+        if (jp.state === 2) {
+          // under canopy: flare to a gentle sink, steer home, sway a little
+          jp.vy += (-10.5 - jp.vy) * Math.min(1, dt * 2.0);
+          p.y += jp.vy * dt;
+          const dx = jp.land.x - p.x, dz = jp.land.z - p.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.5) {
+            const spd = Math.min(24, 4 + dist * 0.35);
+            p.x += (dx / dist) * spd * dt;
+            p.z += (dz / dist) * spd * dt;
+          }
+          jp.rig.rotation.z = Math.sin(time * 1.6 + i * 1.3) * 0.13;
+          jp.rig.rotation.x = Math.cos(time * 1.2 + i * 0.9) * 0.1;
+          // the spent smoke fades out over ~2s once the canopy is open
+          const fade = Math.max(0, 0.85 * (1 - (time - jp.phaseT) / 2));
+          jp.trail.material.opacity = fade;
+          if (fade === 0 && jp.tCount) { jp.tCount = 0; jp.trail.geometry.setDrawRange(0, 0); }
+          if (p.y <= jp.land.y) { p.y = jp.land.y; jp.state = 3; jp.phaseT = time; }
+          return;
+        }
+        // state 3: stood up on the platform — canopy collapses, then fade away
+        const k = time - jp.phaseT;
+        jp.rig.scale.y = Math.max(0.12, 1 - k * 1.1);
+        if (k > 2.4) { jp.state = 4; jp.g.visible = false; jp.trail.visible = false; }
+      });
+
+      if (done) {
+        active = false; root.visible = false;
+        nextAt = time + 110 + Math.random() * 70;
+      }
+    }
+    window._tickRedLions = tick;
+    // dev hooks (console / QA): summon the next jump immediately + inspect
+    window._redLionsNow = () => { nextAt = 0; };
+    window._redLionsRoot = root;
+  }
+
   // === v11: TINY MODE DIRECTIONAL ARROW ===
   // Shows for first 2 questions of every Tiny flight, points at correct gate.
   const tinyArrow = new THREE.Group();
@@ -7195,6 +7877,39 @@
     setTimeout(() => showToast('🇸🇬 HAPPY NATIONAL DAY!'), 1300);
   }
 
+  // v19.x: National Day countdown chip — visible through the ~6-week run-up
+  // to Aug 9 and on the day itself. Evergreen: computes the NEXT Aug 9 from
+  // the device date so it re-arms every year, and the SG-number is derived
+  // (year − 1965), never hardcoded. Date math is done on date-only values so
+  // DST/timezone offsets can't produce off-by-one day counts. Tapping the
+  // chip in the run-up previews National Day mode for this session only —
+  // identical semantics to ?ndp=1 (forceFestive, never written to storage).
+  {
+    // Evergreen + re-arming: nd is ALWAYS the *next* Aug 9 (rolls to next
+    // year the moment today passes it), so after National Day the chip simply
+    // hides until ~45 days before the following year's Aug 9, then counts down
+    // again with the new SG-number (year − 1965). Since v20 made festive the
+    // permanent default, this is now a pure informational badge — there's no
+    // "preview" to trigger, so it's not clickable.
+    const chip = document.getElementById('ndp-countdown');
+    if (chip) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let nd = new Date(now.getFullYear(), 7, 9);   // months are 0-based
+      if (today > nd) nd = new Date(now.getFullYear() + 1, 7, 9);
+      const days = Math.round((nd - today) / 86400000);
+      const sgAge = nd.getFullYear() - 1965;
+      chip.disabled = true;   // informational only (festive is always on now)
+      if (days === 0) {
+        chip.textContent = '🎆 HAPPY NATIONAL DAY · SG' + sgAge + '!';
+        chip.classList.add('show');
+      } else if (days <= 45) {
+        chip.textContent = '🇸🇬 ' + days + (days === 1 ? ' DAY' : ' DAYS') + ' TO NATIONAL DAY · SG' + sgAge;
+        chip.classList.add('show');
+      }
+    }
+  }
+
   function toggleSound() {
     Settings.sound = !Settings.sound;
     document.getElementById('cb-sound').checked = Settings.sound;
@@ -7213,13 +7928,26 @@
       showToast('🔒 Hit 400 to unlock SUNSET');
       return;
     }
-    Settings.timeOfDay = (Settings.timeOfDay === 'day') ? 'sunset' : 'day';
+    // v20: cycle day → sunset → night → day, skipping locked tiers. When a
+    // player cycles off sunset and Night isn't unlocked yet, surface a hint
+    // that it exists (and the score to reach it) instead of silently looping
+    // back to day — Night is easy to miss otherwise.
+    let hint = null;
+    if (Settings.timeOfDay === 'day') Settings.timeOfDay = 'sunset';
+    else if (Settings.timeOfDay === 'sunset') {
+      if (isUnlocked('night')) Settings.timeOfDay = 'night';
+      else {
+        Settings.timeOfDay = 'day';
+        const n = UNLOCK_LADDER.find(u => u.id === 'night');
+        hint = '🔒 Hit ' + (n ? n.threshold : 700) + ' to unlock NIGHT';
+      }
+    } else Settings.timeOfDay = 'day';
     document.querySelectorAll('input[name=timeofday]').forEach(r => r.checked = (r.value === Settings.timeOfDay));
     Settings.save();
     Settings.updateBadges();
     applyTimeOfDay();
     if (Settings.timeOfDay === 'sunset') markSunsetUsed();
-    showToast('TIME: ' + (Settings.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY'));
+    showToast(hint || ('TIME: ' + (Settings.timeOfDay === 'night' ? 'NIGHT' : (Settings.timeOfDay === 'sunset' ? 'SUNSET' : 'DAY'))));
   }
   function toggleControlStyle() {
     Settings.control = (Settings.control === 'joystick') ? 'dpad' : 'joystick';
@@ -7772,7 +8500,7 @@
         // from sunset-only: festive mode earns finales (and the D4 deca-
         // streak volley below) at any time of day — tickFireworks no longer
         // resets them when festive.
-        if (Settings.timeOfDay === 'sunset' || window.festiveActive()) {
+        if (Settings.timeOfDay !== 'day' || window.festiveActive()) {
           if (window.festiveActive() && game.streak % 10 === 0) {
             // D4: festive deca-streak — a quick volley walking the shoreline
             // arc, NS Square first. (The full RSAF salute is a later part;
@@ -8291,12 +9019,14 @@
       }
     }
 
-    const wp = water.geometry.attributes.position;
-    for (let i = 0; i < wp.count; i++) {
-      const x = wp.getX(i), z = wp.getZ(i);
-      wp.setY(i, Math.sin(x * 0.02 + t * 1.2) * 0.6 + Math.cos(z * 0.025 + t * 0.8) * 0.5);
+    // v20: waves are displaced in the vertex shader now — one uniform write
+    // replaces the old whole-mesh CPU loop + buffer re-upload.
+    waterTime.value = t;
+    // Light-smear "reflections" shimmer gently while visible (sunset/night).
+    for (let i = 0; i < timeAware.smearStrips.length; i++) {
+      const s = timeAware.smearStrips[i];
+      if (s.mesh.visible) s.mat.opacity = s.base * (0.8 + 0.2 * Math.sin(t * 0.7 + i * 2.1));
     }
-    wp.needsUpdate = true;
 
     if (merlion.userData.spout) {
       const s = 1 + Math.sin(t * 3) * 0.1;
@@ -8316,6 +9046,7 @@
     tickSpectra(rawDt, t);
     tickSearchlights(rawDt, t);
     if (window._tickDroneShow) window._tickDroneShow(rawDt, t);
+    if (window._tickRedLions)  window._tickRedLions(rawDt, t);
     tickBeacons(t);      // Part C4: aircraft-warning blinkers
     tickTraffic(rawDt);  // Part C5: headlight/taillight dots
 
@@ -8614,6 +9345,22 @@
     tickTinyArrow(t);
   }
 
+  // v20: ?debug=1 — live renderer stats (draw calls / triangles / fps) plus
+  // window._scene/_camera hooks for headless QA probes. Dev-only, zero cost
+  // when the param is absent.
+  let debugHud = null, _dbgFrames = 0, _dbgLast = 0;
+  try {
+    if (new URLSearchParams(location.search).get('debug') === '1') {
+      debugHud = document.createElement('div');
+      debugHud.id = 'debug-hud';
+      debugHud.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:400;' +
+        'font:11px/1.5 monospace;color:#8ff;background:rgba(0,10,20,0.65);' +
+        'padding:4px 8px;border-radius:6px;pointer-events:none;white-space:pre';
+      document.body.appendChild(debugHud);
+      window._scene = scene; window._camera = camera; window._renderer = renderer;
+    }
+  } catch (e) {}
+
   function loop() {
     requestAnimationFrame(loop);
     const now = performance.now();
@@ -8621,6 +9368,17 @@
     last = now;
     update(dt);
     renderer.render(scene, camera);
+    if (debugHud) {
+      _dbgFrames++;
+      if (now - _dbgLast > 500) {
+        const fps = Math.round(_dbgFrames * 1000 / (now - _dbgLast));
+        _dbgFrames = 0; _dbgLast = now;
+        const ri = renderer.info;
+        debugHud.textContent =
+          'calls ' + ri.render.calls + ' · tris ' + (ri.render.triangles / 1000).toFixed(1) + 'k' +
+          ' · geo ' + ri.memory.geometries + ' · tex ' + ri.memory.textures + ' · fps ' + fps;
+      }
+    }
   }
   camera.position.set(300, 200, 300);
   camera.lookAt(0, 70, -100);
