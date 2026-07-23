@@ -14,8 +14,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 - **Three.js vendored locally** (`vendor/three.r128.min.js`, MIT, identical to npm `three@0.128.0`) — the game no longer loads anything from cdnjs, so a CDN outage or a school/corporate network filter can't black-screen it on launch weekend. The existing load-failure fallback message stays as a safety net.
 - **README demo GIF cut 22 MB → 4.3 MB** (440 px / 6 fps / 64-color palette re-encode, full 20 s loop kept) so the landing page no longer forces a 22 MB download on every visitor.
 
+### Fixed
+- The Aug-9 "🇸🇬 HAPPY NATIONAL DAY!" title toast no longer fires when the player has explicitly forced festive off with `?ndp=0` — the guard treated "param absent" and "param = 0" the same.
+
 ### Removed
 - Two unreferenced screengrab PNGs (~1.5 MB) superseded by the JPG share card.
+
+### Verified
+- Headless functional sweep, zero page errors throughout: all four difficulties fly 12 s and pause/resume cleanly; a valid `?c=` challenge link shows the banner and starts at the challenger's difficulty while three malformed/out-of-range variants are rejected silently; the game boots and plays with `localStorage` access throwing (Safari private-mode behavior); on a 360×800 touch viewport all difficulty buttons sit above the fold and the d-pad renders; faked-clock checks confirm the season default reverts on Sep 1 2026, greets SG61 on Aug 9, and re-arms for SG62 in June 2027.
 
 ## [v20] — 2026-07-03
 

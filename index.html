@@ -7886,7 +7886,7 @@
 
   // Part A: greet auto-activated National Day mode once at the title screen —
   // only when it kicked in by date (not via ?ndp=1, not pinned by the checkbox).
-  if (bootIsAug9 && !forceFestive && Settings.festive === null) {
+  if (bootIsAug9 && forceFestive === null && Settings.festive === null) {
     setTimeout(() => showToast('🇸🇬 HAPPY NATIONAL DAY!'), 1300);
   }
 
