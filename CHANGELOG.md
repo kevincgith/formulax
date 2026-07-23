@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ---
 
+## [v20.1] — 2026-07-23
+
+**Release hardening for the National Day window.** No gameplay changes — this patch makes the NDP look self-reverting, removes the game's only CDN dependency, and puts the README on a diet.
+
+### Changed
+- **NDP season window replaces perpetual NDP** — `festiveActive()`'s default is now a date window (**Jun 25 – Aug 31**, opening in step with the countdown chip's 45-day run-up) instead of always-on. The game self-reverts to its everyday look on Sep 1 with no redeploy, and re-enters the season automatically every year; Aug 9 itself always counts. The `?ndp=1` / `?ndp=0` overrides and the persistent 🎆 toggle keep exactly their v20 semantics.
+- **Three.js vendored locally** (`vendor/three.r128.min.js`, MIT, identical to npm `three@0.128.0`) — the game no longer loads anything from cdnjs, so a CDN outage or a school/corporate network filter can't black-screen it on launch weekend. The existing load-failure fallback message stays as a safety net.
+- **README demo GIF cut 22 MB → 4.3 MB** (440 px / 6 fps / 64-color palette re-encode, full 20 s loop kept) so the landing page no longer forces a 22 MB download on every visitor.
+
+### Removed
+- Two unreferenced screengrab PNGs (~1.5 MB) superseded by the JPG share card.
+
 ## [v20] — 2026-07-03
 
 **The NDP release build.** National Day mode becomes the default look, the bay gets a night, reflections-on-a-budget, the missing river bridges and signature towers land, and the whole thing runs on fewer draw calls than before the pass started.

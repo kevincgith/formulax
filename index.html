@@ -2466,7 +2466,10 @@
 <!-- v19.x: mid-flight reverse prompt (shown on an open stretch after a few laps) -->
 <button id="rev-prompt" type="button">↩ Reverse course &nbsp;(R)</button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+<!-- v20.1: Three.js vendored locally (MIT, r128 = npm three@0.128.0) — the
+     game no longer depends on any CDN, so a cdnjs outage or a school/corporate
+     network filter can't black-screen it. -->
+<script src="vendor/three.r128.min.js"
         onerror="document.getElementById('error-fallback').classList.add('show'); document.getElementById('boot').classList.add('hide');"></script>
 <script>
 (function() {
@@ -2529,11 +2532,14 @@
   // window.festiveActive() during construction — the old param block (the
   // ?c= challenge read) runs far too late for them. Date is cached at boot:
   // festiveActive() runs inside per-frame ticks.
-  // v20: PERPETUAL NDP — festive is now the DEFAULT look through the release
-  // window, not an Aug-9-only event. Priority: ?ndp force-param (1 = on,
-  // 0 = off; session-only, never written to storage) → explicit checkbox
-  // choice (topsum_festive '1'/'0') → ON. The 🎆 toggle and ?ndp=0 are the
-  // escape hatches if the red/white look needs to be cut back later.
+  // v20.1: NDP SEASON — festive is the DEFAULT look through the season
+  // window (Jun 25 – Aug 31, opening in step with the countdown chip's
+  // 45-day run-up), then self-reverts to the everyday look on Sep 1 with
+  // no redeploy needed — Aug 9 itself always counts even if the season
+  // bounds change. Priority: ?ndp force-param (1 = on, 0 = off;
+  // session-only, never written to storage) → explicit checkbox choice
+  // (topsum_festive '1'/'0') → season default. The 🎆 toggle and ?ndp=0
+  // remain the escape hatches inside the window.
   let forceFestive = null;   // null = no param, true = ?ndp=1, false = ?ndp=0
   try {
     const v = new URLSearchParams(location.search).get('ndp');
@@ -2544,11 +2550,17 @@
     const d = new Date();
     return d.getMonth() === 7 && d.getDate() === 9;   // months are 0-based
   })();
+  // Cached at boot like bootIsAug9 (festiveActive() runs in per-frame
+  // ticks); a session straddling a boundary keeps its boot-time look.
+  const bootInNdpSeason = bootIsAug9 || (() => {
+    const d = new Date(), m = d.getMonth();   // months are 0-based
+    return (m === 5 && d.getDate() >= 25) || m === 6 || m === 7;   // Jun 25 – Aug 31
+  })();
   let festiveFanfarePlayed = false;   // Sound.festive() fires once per session
   function festiveActive() {
     if (forceFestive !== null) return forceFestive;
     if (Settings.festive !== null) return Settings.festive;
-    return true;   // v20: perpetual National Day mode (was: bootIsAug9)
+    return bootInNdpSeason;   // v20.1: NDP-season default (was v20: always true)
   }
   window.festiveActive = festiveActive;   // supersedes the Part C7 stub
   // Flip the UI accent tokens (body.festive, Part B token override) and make
@@ -2570,7 +2582,7 @@
     timeOfDay: 'day',
     speedMode: 0,   // v13.1: 0 = Off, 1 = Fast (1.5×), 2 = Faster (1.85×)
     singlish: true, // Part A: Singlish streak cheers, default ON
-    festive: null,  // tri-state — true/false explicit, null = default ON (v20 perpetual NDP)
+    festive: null,  // tri-state — true/false explicit, null = auto (ON during NDP season)
     load() {
       let savedControl = null;
       try {
@@ -7889,9 +7901,10 @@
     // Evergreen + re-arming: nd is ALWAYS the *next* Aug 9 (rolls to next
     // year the moment today passes it), so after National Day the chip simply
     // hides until ~45 days before the following year's Aug 9, then counts down
-    // again with the new SG-number (year − 1965). Since v20 made festive the
-    // permanent default, this is now a pure informational badge — there's no
-    // "preview" to trigger, so it's not clickable.
+    // again with the new SG-number (year − 1965). The chip's 45-day window
+    // opens with the NDP-season festive default (both start Jun 25), so while
+    // it's visible festive is already on — a pure informational badge with no
+    // "preview" to trigger, hence not clickable.
     const chip = document.getElementById('ndp-countdown');
     if (chip) {
       const now = new Date();
