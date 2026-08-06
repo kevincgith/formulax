@@ -164,12 +164,12 @@ Fly Again after losing a challenge replays the *same* questions for an immediate
 - Dynamic lighting and atmosphere
 
 ### 🇸🇬 Singapore Flavor
-Top Sum is set over Marina Bay, and v15 leans in:
+Top Sum is set over Marina Bay, and it leans all the way in:
 
 - **🇸🇬 Singlish cheers** — streak milestones cheer in Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*). On by default; toggle from the title screen.
 - **🎆 National Day mode — on by default through the NDP season** (Jun 25 – Aug 31 each year; the game reverts to its everyday look on Sep 1, automatically). Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, a drone light show over the bay, and a short festive fanfare — plus the city dresses up: **giant flags on the HDB blocks, bunting along Boat Quay, a red-and-white crowd filling the Float grandstand, spectator boats at anchor**. Opt out any time from the 🎆 title-screen toggle (persists), or force it per-session with `?ndp=1` / `?ndp=0`.
 - **🪂 Red Lions jump** — every couple of minutes in National Day mode, a transport runs a pass high over the bay, the stick steps off trailing red smoke, canopies pop, and the team steers down onto the Float platform — the real NDP landing point.
-- **🇸🇬 National Day countdown** — through the ~6-week run-up to Aug 9 the title screen counts down the days (with the year's SG-number). Tap it to preview National Day mode for the current session.
+- **🇸🇬 National Day countdown** — through the ~6-week run-up to Aug 9 the title screen counts down the days (with the year's SG-number), then flips to a 🎆 *Happy National Day* greeting on the day itself. It's a pure countdown badge — National Day mode is already on all season, so there's nothing to toggle.
 - **Streak-10 RSAF salute** — hold a 10-streak and a low formation pass roars over the bay in your honour.
 
 ### 🎮 Built for Desktop + Mobile
