@@ -12,7 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 ### Changed
 - **NDP season window replaces perpetual NDP** — `festiveActive()`'s default is now a date window (**Jun 25 – Aug 31**, opening in step with the countdown chip's 45-day run-up) instead of always-on. The game self-reverts to its everyday look on Sep 1 with no redeploy, and re-enters the season automatically every year; Aug 9 itself always counts. The `?ndp=1` / `?ndp=0` overrides and the persistent 🎆 toggle keep exactly their v20 semantics.
 - **Three.js vendored locally** (`vendor/three.r128.min.js`, MIT, identical to npm `three@0.128.0`) — the game no longer loads anything from cdnjs, so a CDN outage or a school/corporate network filter can't black-screen it on launch weekend. The existing load-failure fallback message stays as a safety net.
-- **README demo GIF cut 22 MB → 4.3 MB** (440 px / 6 fps / 64-color palette re-encode, full 20 s loop kept) so the landing page no longer forces a 22 MB download on every visitor.
+- **README demo GIF cut 22 MB → 4.9 MB** (460 px / 13 fps, trimmed to the first ~11 s) so the landing page no longer forces a 22 MB download on every visitor — while keeping playback near the original's 14 fps so the flight reads smoothly, not choppy.
 
 ### Fixed
 - The Aug-9 "🇸🇬 HAPPY NATIONAL DAY!" title toast no longer fires when the player has explicitly forced festive off with `?ndp=0` — the guard treated "param absent" and "param = 0" the same.
