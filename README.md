@@ -8,9 +8,11 @@
 
 No install · No signup · Desktop + Mobile
 
+> 🇸🇬 **Now flying in National Day mode for SG61** — red-and-white Marina Bay, fireworks, the Red Lions, and a drone light show over the bay, all season long.
+
 ---
 
-![Top Sum Gameplay](top-sum-demo.gif)
+![Top Sum — flying through math answer gates over a National Day Marina Bay, with fireworks and a lit Singapore skyline](top-sum-demo.gif)
 
 
 ---
