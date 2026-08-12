@@ -556,7 +556,7 @@
       var c = document.createElement('div'); c.className = 'confetti'; c.style.background = colors[i % colors.length];
       c.style.left = (45 + Math.random() * 10) + '%'; c.style.top = '55%'; document.body.appendChild(c);
       var ang = Math.random() * Math.PI * 2, distp = 120 + Math.random() * 230, dx = Math.cos(ang) * distp, dy = Math.sin(ang) * distp - 120;
-      c.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (Math.random() * 720) + 'deg)', opacity: 0 }], { duration: 950 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      c.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (Math.random() * 720) + 'deg)', opacity: 0 }], { duration: 950 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
       setTimeout((function (n) { return function () { n.remove(); }; })(c), 1450);
     }
   }
