@@ -527,7 +527,8 @@
       if (opts.indexOf(cand) === -1) opts.push(cand);
     }
     while (opts.length < 3) opts.push(ans + opts.length + 1);
-    return { nums: opts.map(fmt), correctLane: shuffleFindLane(opts, ans) };
+    var correctLane = shuffleFindLane(opts, ans);
+    return { nums: opts.map(fmt), correctLane: correctLane };
   }
 
   function spawnGate() {
