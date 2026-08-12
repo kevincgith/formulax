@@ -135,6 +135,7 @@
 
   var state = { score: 0, streak: 0, bestStreak: 0, lives: 3, correct: 0, speed: 25, difficulty: 'medium', answer: 0 };
   var DIFF = { easy: { base: 20 }, medium: { base: 25 }, hard: { base: 30 }, insane: { base: 23 } };
+  var START_LIVES = 3, MAX_LIVES = 5, LIFE_STREAK_STEP = 3;
 
   // ---- the road curves side to side AND rolls up & down (hills / ramps / valleys).
   //      Buildings ride the same curve, offset a fixed distance to the side, so the whole
@@ -540,7 +541,7 @@
   // ---------- Scoring ----------
   function multiplier() { return state.streak >= 10 ? 4 : state.streak >= 5 ? 3 : state.streak >= 3 ? 2 : 1; }
   var CHEERS = ['叻仔! (Clever!)', '犀利! (Awesome!)', '勁! (Powerful!)', '好嘢! (Nice!)', '掂晒! (Perfect!)'];
-  function showCheer() { var el = document.getElementById('cheer'); el.textContent = CHEERS[randInt(0, CHEERS.length - 1)]; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+  function showCheer(text) { var el = document.getElementById('cheer'); el.textContent = text || CHEERS[randInt(0, CHEERS.length - 1)]; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
   function updateHUD() {
     document.getElementById('score').textContent = state.score;
     document.getElementById('streak').textContent = state.streak;
@@ -591,7 +592,10 @@
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
       state.speed = DIFF[state.difficulty].base + Math.min(state.streak * 0.8, 14);
       flash('good'); confettiBurst(); beep([523, 784, 1046], 0.14, 'triangle');
-      if (state.streak === 3 || state.streak === 5 || state.streak === 10 || (state.streak > 0 && state.streak % 10 === 0)) showCheer();
+      var gainedLife = state.streak % LIFE_STREAK_STEP === 0 && state.lives < MAX_LIVES;
+      if (gainedLife) { state.lives++; beep([660, 880, 1320], 0.12, 'sine'); }
+      if (gainedLife) showCheer('+1 ♥ LIFE!');
+      else if (state.streak === 3 || state.streak === 5 || state.streak === 10 || (state.streak > 0 && state.streak % 10 === 0)) showCheer();
     } else {
       state.streak = 0; state.lives--; state.speed = DIFF[state.difficulty].base;
       flash('bad'); beep([220, 160], 0.18, 'sawtooth');
@@ -680,7 +684,7 @@
 
   // ---------- Flow ----------
   function startGame() {
-    state.score = 0; state.streak = 0; state.bestStreak = 0; state.correct = 0; state.lives = 3; state.speed = DIFF[state.difficulty].base;
+    state.score = 0; state.streak = 0; state.bestStreak = 0; state.correct = 0; state.lives = START_LIVES; state.speed = DIFF[state.difficulty].base;
     carLateral = 0; dist = 0;
     if (gateGroup) { scene.remove(gateGroup); gateGroup = null; }
     updateHUD();
