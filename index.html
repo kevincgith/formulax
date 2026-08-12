@@ -159,7 +159,7 @@
     }
     for (var r2 = 0; r2 < ROAD_ROWS; r2++) {
       var a = r2 * 2, b = (r2 + 1) * 2, c = (r2 + 1) * 2 + 1, d = r2 * 2 + 1;
-      idx.push(a, b, d, b, c, d);
+      idx.push(a, d, b, b, d, c);
     }
     var geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
