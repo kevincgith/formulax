@@ -133,7 +133,7 @@
   var scene, camera, renderer, clock;
   var carGroup, gateGroup = null, resolved = false;
   var roadMesh = null;
-  var dashes = [], buildings = [], pylons = [], arches = [], signs = [], confetti = [];
+  var dashes = [], buildings = [], pylons = [], arches = [], signs = [], confetti = [], landmarks = [];
   var input = { left: false, right: false };
   var running = false, muted = false;
   var carLateral = 0, dist = 0;
@@ -382,6 +382,54 @@
     return grp;
   }
 
+  // ---------- Hong Kong landmark silhouettes (low-poly nods, not literal replicas) ----------
+  // Each returns { grp, h } with the base sitting at local y=0, so callers just set
+  // position.y to the ground/road height at that spot — no centering math needed.
+  function makeLandmark(type, winTex) {
+    var grp = new THREE.Group();
+    var glassMat = new THREE.MeshStandardMaterial({ map: winTex, emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: .45, roughness: .8 });
+    var h;
+    if (type === 0) { // Two IFC — stepped-setback tower with a mast
+      var baseH = 46, midH = 16, mastH = 10;
+      var base = new THREE.Mesh(new THREE.BoxGeometry(9, baseH, 9), glassMat); base.position.y = baseH / 2; grp.add(base);
+      var mid = new THREE.Mesh(new THREE.BoxGeometry(6, midH, 6), glassMat); mid.position.y = baseH + midH / 2; grp.add(mid);
+      var mastMat = new THREE.MeshStandardMaterial({ color: 0x5af0ff, emissive: 0x5af0ff, emissiveIntensity: 1.2 });
+      var mast = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, mastH, 8), mastMat); mast.position.y = baseH + midH + mastH / 2; grp.add(mast);
+      h = baseH + midH + mastH;
+    } else if (type === 1) { // Bank of China Tower — angular faceted core with asymmetric fins
+      var coreH = 50;
+      var core = new THREE.Mesh(new THREE.CylinderGeometry(.5, 6, coreH, 4), glassMat); core.position.y = coreH / 2; core.rotation.y = Math.PI / 4; grp.add(core);
+      var finMat = new THREE.MeshStandardMaterial({ color: 0xff5b7f, emissive: 0xff2d6f, emissiveIntensity: .9 });
+      [0.55, 0.78, 1.0].forEach(function (frac, fi) {
+        var finH = coreH * frac, ang = fi * 2.1;
+        var fin = new THREE.Mesh(new THREE.BoxGeometry(.5, finH, .5), finMat);
+        fin.position.set(Math.cos(ang) * 3, finH / 2, Math.sin(ang) * 3); grp.add(fin);
+      });
+      h = coreH;
+    } else if (type === 2) { // ICC — tallest on the skyline, pyramidal cap, mast
+      var baseH2 = 72, capH = 8, mastH2 = 8;
+      var base2 = new THREE.Mesh(new THREE.BoxGeometry(10, baseH2, 10), glassMat); base2.position.y = baseH2 / 2; grp.add(base2);
+      var capMat = new THREE.MeshStandardMaterial({ color: 0xffe14d, emissive: 0xffb84d, emissiveIntensity: .9 });
+      var cap = new THREE.Mesh(new THREE.ConeGeometry(6, capH, 4), capMat); cap.position.y = baseH2 + capH / 2; cap.rotation.y = Math.PI / 4; grp.add(cap);
+      var mast2 = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, mastH2, 6), capMat); mast2.position.y = baseH2 + capH + mastH2 / 2; grp.add(mast2);
+      h = baseH2 + capH + mastH2;
+    } else if (type === 3) { // Central Plaza — triangular-prism tower, pyramid top, mast
+      var baseH3 = 44, capH3 = 6, mastH3 = 12;
+      var base3 = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, baseH3, 3), glassMat); base3.position.y = baseH3 / 2; grp.add(base3);
+      var capMat3 = new THREE.MeshStandardMaterial({ color: 0x8cff5a, emissive: 0x5adf3a, emissiveIntensity: .9 });
+      var cap3 = new THREE.Mesh(new THREE.ConeGeometry(6.5, capH3, 3), capMat3); cap3.position.y = baseH3 + capH3 / 2; grp.add(cap3);
+      var mast3 = new THREE.Mesh(new THREE.CylinderGeometry(.18, .18, mastH3, 6), capMat3); mast3.position.y = baseH3 + capH3 + mastH3 / 2; grp.add(mast3);
+      h = baseH3 + capH3 + mastH3;
+    } else { // Hopewell Centre — cylindrical tower, the one round silhouette in an otherwise angular skyline
+      var baseH4 = 34;
+      var base4 = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, baseH4, 20), glassMat); base4.position.y = baseH4 / 2; grp.add(base4);
+      var ringMat = new THREE.MeshStandardMaterial({ color: 0xd15aff, emissive: 0xd15aff, emissiveIntensity: 1.0 });
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(6.3, .2, 8, 20), ringMat); ring.position.y = baseH4; ring.rotation.x = Math.PI / 2; grp.add(ring);
+      h = baseH4;
+    }
+    return { grp: grp, h: h };
+  }
+
   function buildScene() {
     scene = new THREE.Scene();
     scene.background = skyTexture();
@@ -455,6 +503,19 @@
       b.userData = { span: 28 * 14, baseH: h, curH: h, lx: lx };
       scene.add(b); buildings.push(b);
     });
+    // Hong Kong landmark towers — a taller backdrop layer set well back from the street buildings,
+    // cycling through 5 distinct silhouettes so the skyline reads as a real city, not repeated boxes.
+    var landWinTex = [windowTexture('#2b3b55'), windowTexture('#3a2b4a')];
+    var LANDMARK_COUNT = 10, LANDMARK_SPACING = 42;
+    for (var li = 0; li < LANDMARK_COUNT; li++) {
+      var type = li % 5, lside = li % 2 === 0 ? -1 : 1;
+      var built = makeLandmark(type, landWinTex[li % landWinTex.length]);
+      var llx = lside * (ROAD_HALF + 26 + Math.random() * 18);
+      var lz = -li * LANDMARK_SPACING - 20;
+      built.grp.position.set(centerX(-lz) + llx, heightAt(-lz) + CURB, lz);
+      built.grp.userData = { span: LANDMARK_COUNT * LANDMARK_SPACING, lx: llx };
+      scene.add(built.grp); landmarks.push(built.grp);
+    }
     // hanging neon shop signs — dense street-canyon clutter, à la Mong Kok / Nathan Road
     var SIGN_SPAN = 46 * 8.5;
     for (var sI = 0; sI < 46; sI++) {
@@ -667,6 +728,21 @@
           var k = Math.min(1, dt * 1.5);
           o.position.x += (targetX - o.position.x) * k;
           o.position.y += (targetY - o.position.y) * k;
+        }
+      }
+      // landmark towers: same curve-follow easing as buildings, but the silhouette per slot stays
+      // fixed on respawn (only re-position) so each landmark keeps its recognizable shape.
+      for (var i = 0; i < landmarks.length; i++) {
+        var o = landmarks[i]; o.position.z += move;
+        var lRespawned = false;
+        if (o.position.z > 16) { o.position.z -= o.userData.span; lRespawned = true; }
+        var lTargetX = centerX(-o.position.z) + o.userData.lx;
+        var lTargetY = heightAt(-o.position.z) + CURB;
+        if (lRespawned) { o.position.x = lTargetX; o.position.y = lTargetY; }
+        else {
+          var lk = Math.min(1, dt * 1.5);
+          o.position.x += (lTargetX - o.position.x) * lk;
+          o.position.y += (lTargetY - o.position.y) * lk;
         }
       }
       // hanging neon signs: ride the curve too, gentle buzz pulse, reroll word/color/spot on respawn.
