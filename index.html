@@ -122,10 +122,12 @@
   var STEER_SPEED = 11;
   var CAR_X_LIMIT = 6.2;
   var GROUND_Y = -3.4;
+  var ROAD_LEN = 480, ROAD_ROWS = 200, ROAD_ROW_LEN = ROAD_LEN / ROAD_ROWS;
 
   var scene, camera, renderer, clock;
   var carGroup, gateGroup = null, resolved = false;
-  var roadTiles = [], dashes = [], buildings = [], pylons = [], arches = [];
+  var roadMesh = null;
+  var dashes = [], buildings = [], pylons = [], arches = [], signs = [];
   var input = { left: false, right: false };
   var running = false, muted = false;
   var carLateral = 0, dist = 0;
@@ -134,7 +136,8 @@
   var DIFF = { easy: { base: 20 }, medium: { base: 25 }, hard: { base: 30 }, insane: { base: 23 } };
 
   // ---- the road curves side to side AND rolls up & down (hills / ramps / valleys).
-  //      Buildings stay fixed (a stable city); only the road, its lanes and edges follow the curve. ----
+  //      Buildings ride the same curve, offset a fixed distance to the side, so the whole
+  //      street bends together instead of a straight city with a road snaking through it. ----
   function centerX(depth) {
     var p = dist * 0.045;
     return 2.6 * Math.sin(p + depth * 0.020) + 1.3 * Math.sin(p * 1.7 + depth * 0.045);
@@ -142,6 +145,41 @@
   function heightAt(depth) {
     var p = dist * 0.04;
     return 1.7 * Math.sin(p * 0.7 + depth * 0.030) + 0.9 * Math.sin(p * 1.25 + depth * 0.058);
+  }
+
+  // ---------- Continuous road ribbon (per-vertex curve + slope — no flat-tile steps) ----------
+  function buildRoadRibbon() {
+    var half = ROAD_HALF + 1, rowCount = ROAD_ROWS + 1;
+    var verts = new Float32Array(rowCount * 2 * 3);
+    var idx = [];
+    for (var r = 0; r < rowCount; r++) {
+      var li = r * 2, ri = li + 1;
+      verts[li * 3] = -half; verts[li * 3 + 1] = 0; verts[li * 3 + 2] = -r * ROAD_ROW_LEN;
+      verts[ri * 3] = half; verts[ri * 3 + 1] = 0; verts[ri * 3 + 2] = -r * ROAD_ROW_LEN;
+    }
+    for (var r2 = 0; r2 < ROAD_ROWS; r2++) {
+      var a = r2 * 2, b = (r2 + 1) * 2, c = (r2 + 1) * 2 + 1, d = r2 * 2 + 1;
+      idx.push(a, b, d, b, c, d);
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    var mat = new THREE.MeshStandardMaterial({ color: 0x17151f, roughness: .95 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    return mesh;
+  }
+  function updateRoadRibbon() {
+    var pos = roadMesh.geometry.attributes.position.array;
+    for (var r = 0; r <= ROAD_ROWS; r++) {
+      var depth = r * ROAD_ROW_LEN, cx = centerX(depth), hy = heightAt(depth);
+      var li = r * 6, ri = li + 3;
+      pos[li] = cx - (ROAD_HALF + 1); pos[li + 1] = hy;
+      pos[ri] = cx + (ROAD_HALF + 1); pos[ri + 1] = hy;
+    }
+    roadMesh.geometry.attributes.position.needsUpdate = true;
+    roadMesh.geometry.computeVertexNormals();
   }
 
   function tryWebGL() {
@@ -180,6 +218,35 @@
       g.fillRect(x, y, 7, 8);
     }
     var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+  }
+  var SIGN_WORDS = ['茶餐廳', '酒吧', '找換店', '藥房', '麻雀', '髮廊', '士多', '24小時', '燒臘', '糖水', '網吧', '金舖', '大押', '涼茶'];
+  var SIGN_COLORS = [0xff2d6f, 0x5af0ff, 0xffe14d, 0x8cff5a, 0xff8a3d, 0xd15aff];
+  function glowTexture(color) {
+    var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    var g = c.getContext('2d');
+    var r = (color >> 16) & 255, gg = (color >> 8) & 255, b = color & 255;
+    var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(' + r + ',' + gg + ',' + b + ',1)');
+    grad.addColorStop(0.5, 'rgba(' + r + ',' + gg + ',' + b + ',.45)');
+    grad.addColorStop(1, 'rgba(' + r + ',' + gg + ',' + b + ',0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+  function neonSignTexture(text, color) {
+    var c = document.createElement('canvas'); c.width = 160; c.height = 320;
+    var g = c.getContext('2d');
+    g.fillStyle = 'rgba(8,5,16,.94)'; g.fillRect(0, 0, 160, 320);
+    var hex = '#' + color.toString(16).padStart(6, '0');
+    g.shadowColor = hex; g.shadowBlur = 20;
+    g.strokeStyle = hex; g.lineWidth = 7; g.strokeRect(10, 10, 140, 300);
+    g.fillStyle = hex;
+    g.font = 'bold 52px "PingFang HK","Microsoft JhengHei",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    var chars = text.split('');
+    var lineH = Math.min(62, 280 / chars.length);
+    var startY = 160 - (chars.length - 1) * lineH / 2;
+    chars.forEach(function (ch, i) { g.fillText(ch, 80, startY + i * lineH); });
+    return new THREE.CanvasTexture(c);
   }
   function skylineBackdrop() {
     var c = document.createElement('canvas'); c.width = 2048; c.height = 400;
@@ -273,6 +340,40 @@
     return grp;
   }
 
+  // ---------- Hanging neon shop signs (Kowloon-style street canyon) ----------
+  function randomizeSign(grp) {
+    var side = Math.random() < 0.5 ? -1 : 1;
+    var word = SIGN_WORDS[randInt(0, SIGN_WORDS.length - 1)];
+    var color = SIGN_COLORS[randInt(0, SIGN_COLORS.length - 1)];
+    var h = 2.3 + Math.random() * 1.6, w = h * 0.5;
+    var lx = side * (ROAD_HALF + 0.7 + Math.random() * 1.7);
+    var facadeX = lx + side * (3 + Math.random() * 9);
+    var y = 3.1 + Math.random() * 6.4;
+
+    grp.panel.geometry.dispose();
+    grp.panel.geometry = new THREE.PlaneGeometry(w, h);
+    grp.panel.material.map.dispose();
+    grp.panel.material.map = neonSignTexture(word, color);
+    grp.panel.material.needsUpdate = true;
+    grp.panel.position.set(lx, y, 0);
+    grp.panel.rotation.y = side > 0 ? -0.55 : 0.55;
+
+    grp.arm.scale.x = Math.abs(facadeX - lx);
+    grp.arm.position.set((lx + facadeX) / 2, y, 0.05);
+
+    grp.userData.ph = Math.random() * Math.PI * 2;
+  }
+  function makeSign() {
+    var grp = new THREE.Group();
+    var panelMat = new THREE.MeshBasicMaterial({ map: neonSignTexture(SIGN_WORDS[0], SIGN_COLORS[0]) });
+    grp.panel = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), panelMat); grp.add(grp.panel);
+    var armMat = new THREE.MeshStandardMaterial({ color: 0x140c22, roughness: .9 });
+    grp.arm = new THREE.Mesh(new THREE.BoxGeometry(1, 0.09, 0.09), armMat); grp.add(grp.arm);
+    grp.userData = { ph: 0 };
+    randomizeSign(grp);
+    return grp;
+  }
+
   function buildScene() {
     scene = new THREE.Scene();
     scene.background = skyTexture();
@@ -293,12 +394,9 @@
     var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 1400), new THREE.MeshStandardMaterial({ color: 0x0f0a1e, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2; ground.position.set(0, GROUND_Y, -200); scene.add(ground);
 
-    // road tiles — straight (all x=0), only ride the hills in Y
-    var roadMat = new THREE.MeshStandardMaterial({ color: 0x17151f, roughness: .95 });
-    for (var r = 0; r < 40; r++) {
-      var tile = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2 + 2, 15), roadMat);
-      tile.rotation.x = -Math.PI / 2; tile.position.set(0, 0, -r * 12); scene.add(tile); roadTiles.push(tile);
-    }
+    // continuous road ribbon — one mesh, per-vertex curve + slope, so hills and bends read as
+    // smooth ramps instead of flat-tile steps.
+    roadMesh = buildRoadRibbon(); scene.add(roadMesh); updateRoadRibbon();
     // glowing lane dashes (fixed lanes)
     var dashMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xbbbbbb, emissiveIntensity: .7 });
     for (var d = 0; d < 44; d++) [-2.1, 2.1].forEach(function (lx) {
@@ -314,7 +412,13 @@
       var pole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.2, 0.28), mat);
       var lx = side * (ROAD_HALF + 0.7);
       pole.position.set(lx, 1.6, -pI * 11);
-      pole.userData = { localX: lx, mat: mat, ph: pI + (side > 0 ? 1.6 : 0) };
+      // wet-road reflection: a soft additive glow smeared onto the tarmac, inboard of the pylon
+      var glowX = lx * 0.55;
+      var glowMat = new THREE.MeshBasicMaterial({ map: glowTexture(col), transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false });
+      var glow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 6), glowMat);
+      glow.rotation.x = -Math.PI / 2; glow.position.set(glowX, 0.03, -pI * 11);
+      scene.add(glow);
+      pole.userData = { localX: lx, mat: mat, ph: pI + (side > 0 ? 1.6 : 0), glow: glow, glowX: glowX };
       scene.add(pole); pylons.push(pole);
     });
     // overhead neon arches
@@ -326,7 +430,8 @@
       grp.position.z = -aI * 46 - 30; grp.userData = { mat: mat, i: aI };
       scene.add(grp); arches.push(grp);
     }
-    // buildings (fixed lanes, sit on flat ground — stable)
+    // buildings — ride the same curve as the road, a fixed distance to the side, so the whole
+    // street bends together (a static city with a snaking road looked disconnected and dizzying).
     var winTex = [windowTexture('#3a2b55'), windowTexture('#2b2b40'), windowTexture('#402b40'), windowTexture('#2b3b4a')];
     for (var i = 0; i < 28; i++) [0, 1].forEach(function (side) {
       var h = 12 + Math.random() * 42, w = 6 + Math.random() * 5;
@@ -334,10 +439,19 @@
       tex.repeat.set(Math.max(1, w / 3 | 0), Math.max(2, h / 5 | 0));
       var mat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: .4, roughness: .85 });
       var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
-      var lx = (side === 0 ? -1 : 1) * (ROAD_HALF + 5 + Math.random() * 12);
-      b.position.set(lx, GROUND_Y + h / 2, -i * 14 - 6); b.userData = { span: 28 * 14, baseH: h };
+      var lx = (side === 0 ? -1 : 1) * (ROAD_HALF + 1 + w / 2 + Math.random() * 10);
+      var z = -i * 14 - 6;
+      b.position.set(centerX(-z) + lx, GROUND_Y + h / 2, z); b.userData = { span: 28 * 14, baseH: h, lx: lx };
       scene.add(b); buildings.push(b);
     });
+    // hanging neon shop signs — dense street-canyon clutter, à la Mong Kok / Nathan Road
+    var SIGN_SPAN = 46 * 8.5;
+    for (var sI = 0; sI < 46; sI++) {
+      var sign = makeSign();
+      sign.position.z = -sI * 8.5 - Math.random() * 5;
+      sign.userData.span = SIGN_SPAN;
+      scene.add(sign); signs.push(sign);
+    }
     // distant skyline
     var bd = new THREE.Mesh(new THREE.PlaneGeometry(900, 170), new THREE.MeshBasicMaterial({ map: skylineBackdrop(), transparent: true, depthWrite: false, fog: false }));
     bd.position.set(0, 60, -430); scene.add(bd);
@@ -496,12 +610,33 @@
       for (var wi = 0; wi < carGroup.wheels.length; wi++) carGroup.wheels[wi].rotation.x -= move * 0.5;
 
       // stream toward car (Z), follow the curve (X) and ride the hills (Y).
-      for (var i = 0; i < roadTiles.length; i++) { var o = roadTiles[i]; o.position.z += move; if (o.position.z > 15) o.position.z -= roadTiles.length * 12; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); }
+      updateRoadRibbon();
       for (var i = 0; i < dashes.length; i++) { var o = dashes[i]; o.position.z += move; if (o.position.z > 12) o.position.z -= 440; o.position.x = centerX(-o.position.z) + o.userData.localX; o.position.y = heightAt(-o.position.z) + 0.08; }
-      for (var i = 0; i < pylons.length; i++) { var o = pylons[i]; o.position.z += move; if (o.position.z > 13) o.position.z -= 374; o.position.x = centerX(-o.position.z) + o.userData.localX; o.position.y = heightAt(-o.position.z) + 1.6; o.userData.mat.emissiveIntensity = 0.7 + 0.55 * Math.sin(t * 5 + o.userData.ph); }
+      for (var i = 0; i < pylons.length; i++) {
+        var o = pylons[i]; o.position.z += move; if (o.position.z > 13) o.position.z -= 374;
+        o.position.x = centerX(-o.position.z) + o.userData.localX;
+        o.position.y = heightAt(-o.position.z) + 1.6;
+        o.userData.mat.emissiveIntensity = 0.7 + 0.55 * Math.sin(t * 5 + o.userData.ph);
+        var gl = o.userData.glow;
+        gl.position.z = o.position.z;
+        gl.position.x = centerX(-o.position.z) + o.userData.glowX;
+        gl.position.y = heightAt(-o.position.z) + 0.03;
+        gl.material.opacity = 0.22 + 0.16 * Math.sin(t * 5 + o.userData.ph);
+      }
       for (var i = 0; i < arches.length; i++) { var o = arches[i]; o.position.z += move; if (o.position.z > 14) o.position.z -= arches.length * 46; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); o.userData.mat.emissive.setHSL((t * 0.12 + o.userData.i * 0.13) % 1, 1, 0.55); }
-      // buildings: fixed city — stream in Z only, never slide sideways.
-      for (var i = 0; i < buildings.length; i++) { var o = buildings[i]; o.position.z += move; if (o.position.z > 16) { o.position.z -= o.userData.span; var nh = 12 + Math.random() * 42; o.scale.y = nh / o.userData.baseH; o.position.y = GROUND_Y + nh / 2; } }
+      // buildings: ride the curve at a fixed offset (see buildScene), stream in Z, reroll height on respawn.
+      for (var i = 0; i < buildings.length; i++) {
+        var o = buildings[i]; o.position.z += move; if (o.position.z > 16) { o.position.z -= o.userData.span; var nh = 12 + Math.random() * 42; o.scale.y = nh / o.userData.baseH; o.position.y = GROUND_Y + nh / 2; }
+        o.position.x = centerX(-o.position.z) + o.userData.lx;
+      }
+      // hanging neon signs: ride the curve too, gentle buzz pulse, reroll word/color/spot on respawn.
+      for (var i = 0; i < signs.length; i++) {
+        var o = signs[i]; o.position.z += move;
+        if (o.position.z > 16) { o.position.z -= o.userData.span; randomizeSign(o); }
+        o.position.x = centerX(-o.position.z);
+        var buzz = 1 + 0.035 * Math.sin(t * 9 + o.userData.ph);
+        o.panel.scale.set(buzz, buzz, 1);
+      }
 
       if (gateGroup) {
         gateGroup.position.z += move;
