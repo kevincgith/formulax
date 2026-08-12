@@ -27,8 +27,8 @@
   @keyframes cheerPop { 0%{opacity:0; transform:translate(-50%,-50%) scale(.5) rotate(-6deg);} 20%{opacity:1; transform:translate(-50%,-50%) scale(1.1) rotate(2deg);} 70%{opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0);} 100%{opacity:0; transform:translate(-50%,-60%) scale(1);} }
 
   #flash { position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0; }
-  #flash.good { background: radial-gradient(circle at 50% 60%, rgba(64,255,140,.35), transparent 65%); animation: fadeFlash .5s ease; }
-  #flash.bad { background: radial-gradient(circle at 50% 60%, rgba(255,50,80,.42), transparent 70%); animation: fadeFlash .5s ease; }
+  #flash.good { background: radial-gradient(ellipse at center, transparent 50%, rgba(64,255,140,.22) 100%); animation: fadeFlash .5s ease; }
+  #flash.bad { background: radial-gradient(ellipse at center, transparent 50%, rgba(255,50,80,.26) 100%); animation: fadeFlash .5s ease; }
   @keyframes fadeFlash { 0%{opacity:1;} 100%{opacity:0;} }
 
   #touch { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
@@ -429,10 +429,12 @@
       pole.userData = { localX: lx, mat: mat, ph: pI + (side > 0 ? 1.6 : 0), glow: glow, glowX: glowX };
       scene.add(pole); pylons.push(pole);
     });
-    // overhead neon arches
+    // overhead neon arches — a fixed color per arch (from the same palette as the shop signs)
+    // with a slow brightness breathe, instead of continuously cycling through the whole hue wheel.
     for (var aI = 0; aI < 8; aI++) {
       var grp = new THREE.Group();
-      var mat = new THREE.MeshStandardMaterial({ color: 0xff4d88, emissive: 0xff2d6f, emissiveIntensity: 1.1 });
+      var archCol = SIGN_COLORS[aI % SIGN_COLORS.length];
+      var mat = new THREE.MeshStandardMaterial({ color: archCol, emissive: archCol, emissiveIntensity: 0.85 });
       var bar = new THREE.Mesh(new THREE.BoxGeometry(ROAD_HALF * 2 + 2, 0.35, 0.35), mat); bar.position.y = 6.4; grp.add(bar);
       [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 6.4, 0.35), mat); post.position.set(s * (ROAD_HALF + 0.9), 3.2, 0); grp.add(post); });
       grp.position.z = -aI * 46 - 30; grp.userData = { mat: mat, i: aI };
@@ -642,14 +644,14 @@
         var o = pylons[i]; o.position.z += move; if (o.position.z > 13) o.position.z -= 374;
         o.position.x = centerX(-o.position.z) + o.userData.localX;
         o.position.y = heightAt(-o.position.z) + 1.6;
-        o.userData.mat.emissiveIntensity = 0.7 + 0.55 * Math.sin(t * 5 + o.userData.ph);
+        o.userData.mat.emissiveIntensity = 0.85 + 0.25 * Math.sin(t * 1.6 + o.userData.ph);
         var gl = o.userData.glow;
         gl.position.z = o.position.z;
         gl.position.x = centerX(-o.position.z) + o.userData.glowX;
         gl.position.y = heightAt(-o.position.z) + 0.03;
-        gl.material.opacity = 0.22 + 0.16 * Math.sin(t * 5 + o.userData.ph);
+        gl.material.opacity = 0.2 + 0.07 * Math.sin(t * 1.6 + o.userData.ph);
       }
-      for (var i = 0; i < arches.length; i++) { var o = arches[i]; o.position.z += move; if (o.position.z > 14) o.position.z -= arches.length * 46; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); o.userData.mat.emissive.setHSL((t * 0.12 + o.userData.i * 0.13) % 1, 1, 0.55); }
+      for (var i = 0; i < arches.length; i++) { var o = arches[i]; o.position.z += move; if (o.position.z > 14) o.position.z -= arches.length * 46; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); o.userData.mat.emissiveIntensity = 0.75 + 0.2 * Math.sin(t * 1.1 + o.userData.i * 0.7); }
       // buildings: ride the curve at a fixed offset (see buildScene), stream in Z, reroll height on respawn.
       // Position eases toward the curve/height target instead of snapping to it every frame — centerX's
       // faster secondary wiggle term reads fine on thin dashes but made wide buildings visibly shimmy.
@@ -672,7 +674,7 @@
         var o = signs[i]; o.position.z += move;
         if (o.position.z > 16) { o.position.z -= o.userData.span; randomizeSign(o); }
         o.position.x = centerX(-o.position.z);
-        var buzz = 1 + 0.035 * Math.sin(t * 9 + o.userData.ph);
+        var buzz = 1 + 0.015 * Math.sin(t * 2.2 + o.userData.ph);
         o.panel.scale.set(buzz, buzz, 1);
       }
 
