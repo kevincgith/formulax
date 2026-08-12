@@ -16,7 +16,10 @@
   .hud-top { position: absolute; top: env(safe-area-inset-top, 0); left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 16px; }
   .stat { background: rgba(20,10,40,.55); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 7px 12px; font-weight: 700; font-size: 15px; line-height: 1.3; letter-spacing: .3px; }
   .stat small { display: block; font-size: 10px; font-weight: 600; opacity: .6; letter-spacing: 1px; text-transform: uppercase; }
+  .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   #lives { color: #ff5b7f; }
+  .heart { color: rgba(255,255,255,.2); }
+  .heart.on { color: #ff5b7f; }
   #question { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); font-size: clamp(24px, 6vw, 48px); font-weight: 800; text-shadow: 0 3px 14px rgba(0,0,0,.7); letter-spacing: 1px; white-space: nowrap; }
   #multiplier { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 800; color: #ffd34d; opacity: 0; transition: opacity .2s; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
   #cheer { position: absolute; top: 40%; left: 50%; transform: translate(-50%,-50%) scale(.6); font-size: clamp(28px, 9vw, 64px); font-weight: 800; color: #ffe14d; text-shadow: 0 4px 20px rgba(0,0,0,.85), 0 0 30px rgba(255,180,60,.6); opacity: 0; pointer-events: none; }
@@ -55,7 +58,7 @@
   #newbest { color: #40ff8c; font-weight: 800; margin-top: 8px; opacity: 0; }
   #noWebGL { position: fixed; inset: 0; z-index: 40; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; background: #0e0820; }
   #noWebGL h2 { font-size: 26px; margin-bottom: 12px; }
-  .mute { position: fixed; top: env(safe-area-inset-top, 8px); left: 50%; transform: translateX(-50%); margin-top: 6px; z-index: 15; pointer-events: auto; cursor: pointer; background: rgba(20,10,40,.55); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 4px 10px; font-size: 16px; display: none; }
+  .mute { pointer-events: auto; cursor: pointer; background: rgba(20,10,40,.55); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 4px 10px; font-size: 16px; display: none; }
   .confetti { position: fixed; width: 9px; height: 14px; z-index: 12; pointer-events: none; border-radius: 2px; }
 </style>
 </head>
@@ -66,14 +69,16 @@
     <div class="hud-top">
       <div class="stat">SCORE<small>points</small><span id="score">0</span></div>
       <div class="stat" style="text-align:center">STREAK<small>in a row</small><span id="streak">0</span></div>
-      <div class="stat" id="lives" style="text-align:right">♥♥♥<small>lives</small></div>
+      <div class="hud-right">
+        <div class="stat" id="lives" style="text-align:right"><span id="heartsRow"></span><small>lives</small></div>
+        <div class="stat" style="text-align:right">SPEED<small>km/h</small><span id="speedVal">0</span></div>
+        <div class="mute" id="mute">🔊</div>
+      </div>
     </div>
     <div id="question">3 + 4 = ?</div>
     <div id="multiplier">FLOW ×2</div>
     <div id="cheer"></div>
   </div>
-
-  <div class="mute" id="mute">🔊</div>
 
   <div id="touch">
     <div class="steer" id="steerL">◀</div>
@@ -136,6 +141,7 @@
   var state = { score: 0, streak: 0, bestStreak: 0, lives: 3, correct: 0, speed: 25, difficulty: 'medium', answer: 0 };
   var DIFF = { easy: { base: 20 }, medium: { base: 25 }, hard: { base: 30 }, insane: { base: 23 } };
   var START_LIVES = 3, MAX_LIVES = 5, LIFE_STREAK_STEP = 3;
+  var SPEED_DISPLAY_SCALE = 7; // cosmetic only — turns the internal speed unit into plausible-looking km/h
 
   // ---- the road curves side to side AND rolls up & down (hills / ramps / valleys).
   //      Buildings ride the same curve, offset a fixed distance to the side, so the whole
@@ -545,8 +551,10 @@
   function updateHUD() {
     document.getElementById('score').textContent = state.score;
     document.getElementById('streak').textContent = state.streak;
-    var hearts = ''; for (var i = 0; i < state.lives; i++) hearts += '♥';
-    document.getElementById('lives').firstChild.nodeValue = hearts || '·';
+    var heartsHTML = '';
+    for (var i = 0; i < MAX_LIVES; i++) heartsHTML += '<span class="heart' + (i < state.lives ? ' on' : '') + '">♥</span>';
+    document.getElementById('heartsRow').innerHTML = heartsHTML;
+    document.getElementById('speedVal').textContent = Math.round(state.speed * SPEED_DISPLAY_SCALE);
     var m = multiplier(), mel = document.getElementById('multiplier');
     if (m > 1) { mel.textContent = 'FLOW ×' + m; mel.style.opacity = '1'; } else mel.style.opacity = '0';
   }
