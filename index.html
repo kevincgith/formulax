@@ -121,8 +121,9 @@
   var GATE_SPAWN_Z = -175;
   var STEER_SPEED = 11;
   var CAR_X_LIMIT = 6.2;
-  var GROUND_Y = -3.4;
-  var ROAD_LEN = 480, ROAD_ROWS = 200, ROAD_ROW_LEN = ROAD_LEN / ROAD_ROWS;
+  var GROUND_Y = -6;
+  var CURB = -1.5;
+  var ROAD_LEN = 480, ROAD_ROWS = 200, ROAD_ROW_LEN = ROAD_LEN / ROAD_ROWS, ROAD_FRONT = 16;
 
   var scene, camera, renderer, clock;
   var carGroup, gateGroup = null, resolved = false;
@@ -153,9 +154,9 @@
     var verts = new Float32Array(rowCount * 2 * 3);
     var idx = [];
     for (var r = 0; r < rowCount; r++) {
-      var li = r * 2, ri = li + 1;
-      verts[li * 3] = -half; verts[li * 3 + 1] = 0; verts[li * 3 + 2] = -r * ROAD_ROW_LEN;
-      verts[ri * 3] = half; verts[ri * 3 + 1] = 0; verts[ri * 3 + 2] = -r * ROAD_ROW_LEN;
+      var li = r * 2, ri = li + 1, z = ROAD_FRONT - r * ROAD_ROW_LEN;
+      verts[li * 3] = -half; verts[li * 3 + 1] = 0; verts[li * 3 + 2] = z;
+      verts[ri * 3] = half; verts[ri * 3 + 1] = 0; verts[ri * 3 + 2] = z;
     }
     for (var r2 = 0; r2 < ROAD_ROWS; r2++) {
       var a = r2 * 2, b = (r2 + 1) * 2, c = (r2 + 1) * 2 + 1, d = r2 * 2 + 1;
@@ -173,7 +174,7 @@
   function updateRoadRibbon() {
     var pos = roadMesh.geometry.attributes.position.array;
     for (var r = 0; r <= ROAD_ROWS; r++) {
-      var depth = r * ROAD_ROW_LEN, cx = centerX(depth), hy = heightAt(depth);
+      var depth = r * ROAD_ROW_LEN - ROAD_FRONT, cx = centerX(depth), hy = heightAt(depth);
       var li = r * 6, ri = li + 3;
       pos[li] = cx - (ROAD_HALF + 1); pos[li + 1] = hy;
       pos[ri] = cx + (ROAD_HALF + 1); pos[ri + 1] = hy;
@@ -441,7 +442,8 @@
       var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
       var lx = (side === 0 ? -1 : 1) * (ROAD_HALF + 1 + w / 2 + Math.random() * 10);
       var z = -i * 14 - 6;
-      b.position.set(centerX(-z) + lx, GROUND_Y + h / 2, z); b.userData = { span: 28 * 14, baseH: h, lx: lx };
+      b.position.set(centerX(-z) + lx, heightAt(-z) + CURB + h / 2, z);
+      b.userData = { span: 28 * 14, baseH: h, curH: h, lx: lx };
       scene.add(b); buildings.push(b);
     });
     // hanging neon shop signs — dense street-canyon clutter, à la Mong Kok / Nathan Road
@@ -625,9 +627,13 @@
       }
       for (var i = 0; i < arches.length; i++) { var o = arches[i]; o.position.z += move; if (o.position.z > 14) o.position.z -= arches.length * 46; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); o.userData.mat.emissive.setHSL((t * 0.12 + o.userData.i * 0.13) % 1, 1, 0.55); }
       // buildings: ride the curve at a fixed offset (see buildScene), stream in Z, reroll height on respawn.
+      // Their base tracks the local road height every frame (not just on respawn) — heightAt's phase
+      // drifts over time even for a building sitting still in Z, same reason X needs updating too.
       for (var i = 0; i < buildings.length; i++) {
-        var o = buildings[i]; o.position.z += move; if (o.position.z > 16) { o.position.z -= o.userData.span; var nh = 12 + Math.random() * 42; o.scale.y = nh / o.userData.baseH; o.position.y = GROUND_Y + nh / 2; }
+        var o = buildings[i]; o.position.z += move;
+        if (o.position.z > 16) { o.position.z -= o.userData.span; o.userData.curH = 12 + Math.random() * 42; o.scale.y = o.userData.curH / o.userData.baseH; }
         o.position.x = centerX(-o.position.z) + o.userData.lx;
+        o.position.y = heightAt(-o.position.z) + CURB + o.userData.curH / 2;
       }
       // hanging neon signs: ride the curve too, gentle buzz pulse, reroll word/color/spot on respawn.
       for (var i = 0; i < signs.length; i++) {
