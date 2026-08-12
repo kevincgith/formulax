@@ -440,7 +440,7 @@
       tex.repeat.set(Math.max(1, w / 3 | 0), Math.max(2, h / 5 | 0));
       var mat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: .4, roughness: .85 });
       var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
-      var lx = (side === 0 ? -1 : 1) * (ROAD_HALF + 1 + w / 2 + Math.random() * 10);
+      var lx = (side === 0 ? -1 : 1) * (ROAD_HALF + 2 + w / 2 + Math.random() * 10);
       var z = -i * 14 - 6;
       b.position.set(centerX(-z) + lx, heightAt(-z) + CURB + h / 2, z);
       b.userData = { span: 28 * 14, baseH: h, curH: h, lx: lx };
@@ -627,13 +627,21 @@
       }
       for (var i = 0; i < arches.length; i++) { var o = arches[i]; o.position.z += move; if (o.position.z > 14) o.position.z -= arches.length * 46; o.position.x = centerX(-o.position.z); o.position.y = heightAt(-o.position.z); o.userData.mat.emissive.setHSL((t * 0.12 + o.userData.i * 0.13) % 1, 1, 0.55); }
       // buildings: ride the curve at a fixed offset (see buildScene), stream in Z, reroll height on respawn.
-      // Their base tracks the local road height every frame (not just on respawn) — heightAt's phase
-      // drifts over time even for a building sitting still in Z, same reason X needs updating too.
+      // Position eases toward the curve/height target instead of snapping to it every frame — centerX's
+      // faster secondary wiggle term reads fine on thin dashes but made wide buildings visibly shimmy.
+      // Snap instantly on respawn only, so a building doesn't visibly slide in from a stale position.
       for (var i = 0; i < buildings.length; i++) {
         var o = buildings[i]; o.position.z += move;
-        if (o.position.z > 16) { o.position.z -= o.userData.span; o.userData.curH = 12 + Math.random() * 42; o.scale.y = o.userData.curH / o.userData.baseH; }
-        o.position.x = centerX(-o.position.z) + o.userData.lx;
-        o.position.y = heightAt(-o.position.z) + CURB + o.userData.curH / 2;
+        var respawned = false;
+        if (o.position.z > 16) { o.position.z -= o.userData.span; o.userData.curH = 12 + Math.random() * 42; o.scale.y = o.userData.curH / o.userData.baseH; respawned = true; }
+        var targetX = centerX(-o.position.z) + o.userData.lx;
+        var targetY = heightAt(-o.position.z) + CURB + o.userData.curH / 2;
+        if (respawned) { o.position.x = targetX; o.position.y = targetY; }
+        else {
+          var k = Math.min(1, dt * 1.5);
+          o.position.x += (targetX - o.position.x) * k;
+          o.position.y += (targetY - o.position.y) * k;
+        }
       }
       // hanging neon signs: ride the curve too, gentle buzz pulse, reroll word/color/spot on respawn.
       for (var i = 0; i < signs.length; i++) {
