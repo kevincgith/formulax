@@ -128,7 +128,7 @@
   var scene, camera, renderer, clock;
   var carGroup, gateGroup = null, resolved = false;
   var roadMesh = null;
-  var dashes = [], buildings = [], pylons = [], arches = [], signs = [];
+  var dashes = [], buildings = [], pylons = [], arches = [], signs = [], confetti = [];
   var input = { left: false, right: false };
   var running = false, muted = false;
   var carLateral = 0, dist = 0;
@@ -550,14 +550,24 @@
     if (m > 1) { mel.textContent = 'FLOW ×' + m; mel.style.opacity = '1'; } else mel.style.opacity = '0';
   }
   function flash(kind) { var f = document.getElementById('flash'); f.className = ''; void f.offsetWidth; f.className = kind; }
+  // Driven by the main animate() loop (see below) instead of the Web Animations API — ties confetti
+  // to the same clock as the rest of the game instead of a separate timeline that can stall on its own.
   function confettiBurst() {
     var colors = ['#ff5b7f', '#ffb84d', '#ffe14d', '#40ff8c', '#5bc8ff'];
     for (var i = 0; i < 24; i++) {
       var c = document.createElement('div'); c.className = 'confetti'; c.style.background = colors[i % colors.length];
       c.style.left = (45 + Math.random() * 10) + '%'; c.style.top = '55%'; document.body.appendChild(c);
-      var ang = Math.random() * Math.PI * 2, distp = 120 + Math.random() * 230, dx = Math.cos(ang) * distp, dy = Math.sin(ang) * distp - 120;
-      c.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (Math.random() * 720) + 'deg)', opacity: 0 }], { duration: 950 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
-      setTimeout((function (n) { return function () { n.remove(); }; })(c), 1450);
+      var ang = Math.random() * Math.PI * 2, distp = 120 + Math.random() * 230;
+      confetti.push({ el: c, dx: Math.cos(ang) * distp, dy: Math.sin(ang) * distp - 120, rot: Math.random() * 720, dur: 0.95 + Math.random() * 0.4, age: 0 });
+    }
+  }
+  function updateConfetti(dt) {
+    for (var i = confetti.length - 1; i >= 0; i--) {
+      var p = confetti[i]; p.age += dt;
+      var prog = Math.min(1, p.age / p.dur), ease = 1 - Math.pow(1 - prog, 3);
+      p.el.style.transform = 'translate(' + (p.dx * ease) + 'px,' + (p.dy * ease) + 'px) rotate(' + (p.rot * ease) + 'deg)';
+      p.el.style.opacity = String(1 - ease);
+      if (prog >= 1) { p.el.remove(); confetti.splice(i, 1); }
     }
   }
   var actx = null;
@@ -595,6 +605,7 @@
   function animate() {
     requestAnimationFrame(animate);
     var dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+    if (confetti.length) updateConfetti(dt);
 
     if (running) {
       var dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
