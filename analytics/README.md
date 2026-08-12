@@ -1,69 +1,61 @@
-# Top Sum analytics (Cloudflare free tier)
+# Formula X analytics (Cloudflare free tier)
 
-Write-only telemetry for understanding traffic and the share/challenge funnel.
-Gameplay never waits on any of this: the game fires fire-and-forget
-`navigator.sendBeacon()` calls at menu / end-of-flight moments, and silently
-no-ops when the endpoint is unset, offline, or ad-blocked.
+> **Not wired up yet.** This tier was inherited from the Top Sum fork. `index.html`
+> currently has no `ANALYTICS_URL` constant and no `sendBeacon()` calls — both
+> tiers below are dormant until someone adds that instrumentation to the game.
+
+Write-only telemetry for understanding traffic and gameplay funnel events.
+Once wired up, gameplay would never wait on any of this: the game would fire
+fire-and-forget `navigator.sendBeacon()` calls at menu / game-over moments,
+and silently no-op when the endpoint is unset, offline, or ad-blocked.
 
 Privacy: no cookies, no IP addresses, no user agents, no identifiers — only
 anonymous event counts plus the coarse country code Cloudflare derives anyway.
 
 ## Tier 1 — Web Analytics (traffic, referrers, devices)
 
-1. Cloudflare dashboard → **Web Analytics** → *Add a site* → hostname `mli3w.github.io`.
-2. Copy the snippet token and paste it into the commented-out
-   `cloudflareinsights.com/beacon.min.js` tag near the bottom of `index.html`
-   (search for `data-cf-beacon`), then uncomment the tag.
+1. Cloudflare dashboard → **Web Analytics** → *Add a site* → hostname `kevincgith.github.io`.
+2. Copy the snippet token and paste it into a `cloudflareinsights.com/beacon.min.js`
+   tag added to `index.html`.
 
 That's it — no hosting change; the game stays on GitHub Pages.
 
-## Tier 2 — Worker + D1 (the share/challenge funnel)
+## Tier 2 — Worker + D1 (gameplay funnel)
 
 One-time setup from this directory (requires `npm i -g wrangler` and
 `wrangler login` with your Cloudflare account):
 
 ```sh
-wrangler d1 create top-sum-analytics        # copy the printed database_id into wrangler.toml
-wrangler d1 execute top-sum-analytics --remote --file schema.sql
+wrangler d1 create formulax-analytics        # copy the printed database_id into wrangler.toml
+wrangler d1 execute formulax-analytics --remote --file schema.sql
 wrangler deploy                             # prints the Worker URL
 ```
 
-Then paste the Worker URL + `/e` into the `ANALYTICS_URL` constant near the
-top of `index.html` (search for `ANALYTICS_URL`), e.g.
-`https://top-sum-analytics.<your-subdomain>.workers.dev/e`.
+Then add an `ANALYTICS_URL` constant to `index.html` pointing at the Worker
+URL + `/e`, e.g. `https://formulax-analytics.<your-subdomain>.workers.dev/e`,
+and fire `sendBeacon()` calls at the moments you want tracked.
 
-### Events tracked
+### Events
 
-| event             | when                                   | extras                      |
-|-------------------|----------------------------------------|-----------------------------|
-| `game_start`      | flight begins                          | level                       |
-| `game_over`       | flight ends                            | level, score bucket, flag = was-a-challenge |
-| `share_score`     | score share button tapped              |                             |
-| `challenge_share` | challenge share button tapped          | level                       |
-| `challenge_open`  | page loaded with a `?c=` challenge URL | level                       |
-| `challenge_accept`| "Take the challenge" tapped            | level                       |
-| `challenge_skip`  | challenge banner dismissed             |                             |
-| `zoom_fired`      | ZOOOM boost triggered                  |                             |
+`worker.js` currently allowlists three generic events — extend `EVENTS` in
+`worker.js` (and this table) as Formula X grows its own share/streak features:
 
-### Reading the funnel
+| event          | suggested trigger      | extras                |
+|----------------|-------------------------|------------------------|
+| `game_start`   | race begins              | level                  |
+| `game_over`    | race ends                 | level, score bucket    |
+| `share_score`  | score share button tapped |                        |
+
+### Reading the data
 
 ```sh
-# Daily share → open → accept funnel
-wrangler d1 execute top-sum-analytics --remote --command "
-  SELECT date(ts,'unixepoch') AS day, name, COUNT(*) AS n
-  FROM events
-  WHERE name IN ('challenge_share','challenge_open','challenge_accept','challenge_skip')
-  GROUP BY day, name ORDER BY day DESC, name;"
-
-# Challenge completions and how often the challenger was beaten
-wrangler d1 execute top-sum-analytics --remote --command "
-  SELECT date(ts,'unixepoch') AS day,
-         SUM(CASE WHEN flag=1 THEN 1 ELSE 0 END) AS challenge_flights,
-         COUNT(*) AS all_flights
-  FROM events WHERE name='game_over' GROUP BY day ORDER BY day DESC;"
+# Race starts by difficulty
+wrangler d1 execute formulax-analytics --remote --command "
+  SELECT level, COUNT(*) AS n FROM events
+  WHERE name='game_start' GROUP BY level ORDER BY n DESC;"
 
 # Where players are
-wrangler d1 execute top-sum-analytics --remote --command "
+wrangler d1 execute formulax-analytics --remote --command "
   SELECT country, COUNT(*) AS n FROM events
   WHERE name='game_start' GROUP BY country ORDER BY n DESC;"
 ```

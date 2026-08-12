@@ -1,4 +1,4 @@
--- Top Sum analytics — D1 schema
+-- Formula X analytics — D1 schema
 -- Anonymous event counts only: no IP, no user-agent, no identifiers.
 CREATE TABLE IF NOT EXISTS events (
   ts           INTEGER NOT NULL,            -- unix epoch seconds (server clock)

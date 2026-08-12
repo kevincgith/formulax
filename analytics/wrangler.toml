@@ -1,9 +1,9 @@
-name = "top-sum-analytics"
+name = "formulax-analytics"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "top-sum-analytics"
-# Fill in after `wrangler d1 create top-sum-analytics` prints the id:
+database_name = "formulax-analytics"
+# Fill in after `wrangler d1 create formulax-analytics` prints the id:
 database_id = "REPLACE_WITH_DATABASE_ID"

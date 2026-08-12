@@ -1,204 +1,75 @@
-# ✈️ TOP SUM · Math Flight Over Marina Bay
+# 🏎️ FORMULA X · Hong Kong Drive
 
-> A free arcade-style math flight game over Marina Bay — for kids and grown-ups alike.
-> Fly through the right answer, chain streaks into flow, challenge a friend.
+> A free arcade-style math driving game through neon Hong Kong.
+> Steer your F1 car through the gate with the right answer, ride the flow, chase a high score.
 
 🌐 **Play instantly in your browser:**
-👉 https://mli3w.github.io/top-sum/
+👉 https://kevincgith.github.io/formulax/
 
 No install · No signup · Desktop + Mobile
 
-> 🇸🇬 **Now flying in National Day mode for SG61** — red-and-white Marina Bay, fireworks, the Red Lions, and a drone light show over the bay, all season long.
-
 ---
 
-![Top Sum — flying through math answer gates over a National Day Marina Bay, with fireworks and a lit Singapore skyline](top-sum-demo.gif)
+## 🎮 What is Formula X?
 
+Formula X is a fast-paced 3D math game where learning happens through movement, focus, timing and flow.
 
----
+You drive an F1 car down a curving, hilly road through neon Hong Kong. Every few seconds a gate spans the road with three lanes, each showing a number — steer into the lane with the correct answer to the equation on screen.
 
-## 🎮 What is Top Sum?
-
-Top Sum is a fast-paced 3D math game where learning happens through:
-
-- movement
-- focus
-- timing
-- flow
-
-Instead of worksheets or flashcards, players pilot a plane through Marina Bay and steer toward the correct answer gates.
-
-Chain correct answers together to:
-- build streaks
-- increase speed
-- unlock faster and more advanced planes
-- charge a ZOOOM cinematic lap with F-16 escorts
-- trigger cinematic slow-motion moments
-- unlock new flight experiences
-
-…and when you're done, **challenge a friend** with a single shareable link — same questions, same order, head-to-head at the end.
+Chain correct answers together to build a streak, climb the **FLOW** multiplier, and keep the run going. A wrong answer or an off-target gate costs a life; run out and the race ends.
 
 It's less:
 > "solve this question"
 
 and more:
-> **stay focused, stay in flow, don't break the streak**
+> **stay in your lane, stay in flow, don't break the streak**
 
 ---
 
 ## 🚀 30-Second Start
 
 1. Open the link above (or `index.html` locally)
-2. Pick a difficulty — **Tiny** for first-time learners, **Hard** for everyone else
-3. Steer toward the gate showing the correct answer
-4. Don't break the streak
-
----
-
-## 🧠 Why I Built This
-
-This started as a small project for my sister-in-law's son over a long weekend.
-
-At the same time, I was exploring how AI can help prototype interactive ideas faster — especially small interactive learning experiences for kids.
-
-I also made a simplified Tiny Mode for my 4-year-old.
-
-The result became:
-> a free, open-source experiment in making maths feel more like play than repetition.
+2. Pick a difficulty
+3. Hit **LIGHTS OUT**
+4. Steer (`← →` or `A` / `D`, or the on-screen buttons on mobile) into the gate showing the correct answer
+5. Don't break the streak
 
 ---
 
 ## ⚡ Features
 
-### ✈️ Arcade Flight Gameplay
-- Fly through the correct answer gates
-- Wrong answers or collisions cost lives (Tiny mode is forgiving — see below)
+### 🏎️ Arcade Driving Gameplay
+- A hand-built F1 car (livery, halo, wings, glowing diffuser) races down a road that curves left/right and rolls over hills
+- Three-lane answer gates — steer into the correct number, wrong answers or a bad guess cost a life
 - Fast restart loop designed for "one more run"
 
 ### 🔥 Flow System
-- Consecutive correct answers increase your multiplier (×1 → ×2 → ×3 → ×4)
-- Dynamic speed scaling (Tiny mode holds a steady, unhurried pace)
-- "Flow State" visual effects and slow-motion moments
+- Consecutive correct answers raise your multiplier: **FLOW ×2** at a 3-streak, **×3** at 5, **×4** at 10
+- Speed ramps up with your streak (capped), and resets to base pace after a miss
+- Screen flash, confetti burst and a Cantonese cheer (叻仔! 犀利! 勁! 好嘢! 掂晒!) on streak milestones (3, 5, 10, and every 10 after)
+- The correct panel lights up green on a miss, so a wrong guess still teaches the right answer
 
-### 🐣 Tiny Mode — built for 4–5 year olds
-- A short, finishable **mission**: get **10 correct** and you *win* the flight with a firework celebration — a clear "you did it" and a healthy stopping point, not an endless run
-- **No lives, fully crash-proof** — a wrong answer just counts it out and flies on, and bumping a building is a harmless wobble back to centre. Nothing ends the flight but finishing the mission
-- **Countable pictures** under the equation (🐥🐥 + 🐥) so a pre-reader can solve by counting, not recall
-- A calm, **steady pace** that never speeds up on a streak — the youngest always get time to think
-- A decluttered heads-up display: just **Score · Streak · Top Score**
+### 🧮 Four Difficulty Levels
+| Level      | Operations                                      |
+|------------|--------------------------------------------------|
+| **Easy**   | Addition, single digits                          |
+| **Medium** | Addition and subtraction, up to ~20               |
+| **Hard**   | Multi-step: multiplication/division combined with add or subtract |
+| **Insane** | Fractions, including reducing and comparing       |
 
-### 🧠 Smart Practice (every level)
-- **Wrong answers that teach** — the other gates aren't random; each mirrors a real mistake (miscounted by one, added instead of subtracted, wrote both digits, a times-table skip-count slip), so even rejecting a wrong answer is a small lesson
-- **Learning beat on a miss** — the gate that *was* right lights up green, turning the mistake into the most teachable moment in the game
-- **Adaptive review** — a fact you miss quietly comes back a few questions later until it sticks (solo play only; head-to-head challenge links stay identical for both players)
-
-### 🛩 Plane Upgrades on Streaks
-Five plane tiers swap in automatically as your streak builds:
-
-| Streak | Plane Tier |
-|-------:|:-----------|
-| 0      | Tier 1 (starter) |
-| 3      | Tier 2 |
-| 5      | Tier 3 |
-| 10     | Tier 4 |
-| 20     | Tier 5 (top of the line) |
-
-Lose your streak and you drop back. Stay in flow to keep flying the best plane.
-
-### 🚀 ZOOOM Boost
-Each correct answer fills a glowing **ZOOOM bar** at the top of the screen — and the **star coins** scattered along long stretches top it up too (a quarter-answer each). When it's full, tap the bar (or press `Z`) to fire:
-
-- A 3/4-circuit cinematic lap — no math questions, just sky
-- Two F-16 escort jets fade in from behind, lock onto your wings, and peel off climbing into the distance
-- Base speed bumped 2.2×, camera FOV widens, screen edges streak with warp-tunnel rays
-- Fireworks blooming over the bay throughout the lap
-- A triumphant 3-note rising sting at activation
-
-Charge thresholds vary by difficulty — Tiny: 5, Easy: 7, Medium / Hard: 10. Tap the bar mid-question and it'll auto-fire after you answer — no rug-pull.
-
-### ⚡ Speed Mode
-For fast players who find the base pace too gentle. Three tiers, picked from the title screen, cycled by the in-game ⚡ icon, or stepped via the `X` key:
-
-| Tier | Multiplier | Icon |
-|---|---|---|
-| Normal | 1.0× | (off) |
-| ⚡ Fast | 1.5× | ⚡ |
-| ⚡⚡ Faster | 1.85× | ⚡⚡ |
-
-Caps at 1.85× so questions stay readable when stacked with Flow ×4 and ZOOOM. Picked tier persists across sessions.
-
-### 🎯 URL Challenge
-Async multiplayer with zero accounts, zero servers, zero data leaving your device.
-
-After any flight, hit **🎯 Share Challenge** to get a link like:
-
-```
-https://mli3w.github.io/top-sum/?c=k4xz9a-4-7w
-```
-
-Text it to a cousin. They tap the link, hit **Take the challenge** from the title screen, and play the **exact same questions in the exact same order** as you did. At game over, both scores appear side-by-side with a verdict:
-
-> **You: 410 · Challenger: 380 · 🏆 You won by 30**
-
-The whole match state is encoded in the URL itself — a uint32 seed plus level plus score, packed into ~12 base-36 characters. No backend, no friend list, no leaderboard. Just a link.
-
-Fly Again after losing a challenge replays the *same* questions for an immediate rematch.
-
-### 🌆 Cinematic Marina Bay World
-- A continuous open-world Singapore rebuilt from the real map at 1:2 scale (v16) with true compass orientation — the water (bay, **Singapore River**, **Kallang basin**, the open strait) is carved out of one urban landmass, sealed by the **Marina Barrage**
-- A **CBD canyon flythrough** (v17): on the west shore the flight path dives low and threads a tower-lined avenue between the **Raffles Place** skyscrapers, then sweeps through the expanded **MBFC** financial district at the bay's south-west corner — close enough to feel like threading the towers, while the answer gates stay clear
-- **No two laps the same** (v18): each lap the route shifts slightly left, right, up or down on the open legs (the precision sections stay exact), so the tour never feels like it's on rails
-- The **Merlion** at the river mouth (a bumboat cruises past the pastel **Boat Quay shophouses**) with the **Fullerton Hotel** next door, the **Padang** and colonial civic blocks, the **Esplanade**, **the Float (NS Square)**, **Suntec's five towers around the Fountain of Wealth** and the rotating **Singapore Flyer** along the north, and **ArtScience, MBS, the Gardens domes and the Supertree Grove** down the east shore
-- The **Helix Bridge** spans the bay's NE mouth on its real N–S axis, and the **Benjamin Sheares viaduct** strides the basin with its own headlight stream — **Bay East Garden** is the green peninsula beyond
-- **A true garden city**: ~400 instanced trees (avenue rows on every road, park clusters, shore strips, raintree greens with pink trumpet and golden flame accents), plus a skyline ring of distant landmarks — the **National Stadium** dome at Kallang, **Swissôtel Stamford**, the **Sultan Mosque**, **Pinnacle@Duxton** over Chinatown's shophouses and the **Buddha Tooth temple**, **Raffles Hotel**, a forested **Fort Canning hill**, an Orchard tower cluster, **Tanjong Pagar port cranes**, and cargo ships at anchor in the strait
-- **NS Square / the Float** juts south off the north shore, platform over the water — the fireworks anchor site
-- **Lit window facades** across the whole skyline (shared materials, so it's cheap)
-- Rooftop props and blinking **aircraft-warning beacons** on the tall towers
-- **Ambient traffic** — dark specks by day, glowing light streams at dusk
-- A **shoreline light garland** along the promenade at dusk and on festive days
-- A **rotating Singapore Flyer** (~100 s per revolution, capsules stay level)
-- Day, Sunset and **Night** modes, with fog depth tuned per time-of-day — night is the parade setting, lit entirely by the city (windows, garland, supertrees, the SkyPark pool) under cool moonlight
-- **Fake skyline reflections** — additive light-smear strips off the CBD, MBS and Esplanade shores at sunset/night, and the bay **flushes with the color of every firework burst**
-- The **Singapore River bridge cluster** (Anderson's steel arches, Cavenagh's portal towers and Elgin) — the bumboat cruise threads under all three — plus **Lau Pa Sat**'s orange-roofed market hall and clock tower amid the CBD canyon, and **Marina One**'s green-heart quad in Marina South
-- Fireworks during sunset
-- A Chinook with a Singapore flag orbits at altitude during the day
-- Occasional NDP-style RSAF fighter formation flypast with contrails
-- Dynamic lighting and atmosphere
-
-### 🇸🇬 Singapore Flavor
-Top Sum is set over Marina Bay, and it leans all the way in:
-
-- **🇸🇬 Singlish cheers** — streak milestones cheer in Singlish (*SHIOK! · STEADY LAH! · POWER LAH! · WAH, SO ZAI! · HUAT AH!*). On by default; toggle from the title screen.
-- **🎆 National Day mode — on by default through the NDP season** (Jun 25 – Aug 31 each year; the game reverts to its everyday look on Sep 1, automatically). Red-and-white takeover: festive UI accents, red/white building lights, day-round fireworks, red/white flypast trails, escort Chinooks flanking the flag, a drone light show over the bay, and a short festive fanfare — plus the city dresses up: **giant flags on the HDB blocks, bunting along Boat Quay, a red-and-white crowd filling the Float grandstand, spectator boats at anchor**. Opt out any time from the 🎆 title-screen toggle (persists), or force it per-session with `?ndp=1` / `?ndp=0`.
-- **🪂 Red Lions jump** — every couple of minutes in National Day mode, a transport runs a pass high over the bay, the stick steps off trailing red smoke, canopies pop, and the team steers down onto the Float platform — the real NDP landing point.
-- **🇸🇬 National Day countdown** — through the ~6-week run-up to Aug 9 the title screen counts down the days (with the year's SG-number), then flips to a 🎆 *Happy National Day* greeting on the day itself. It's a pure countdown badge — National Day mode is already on all season, so there's nothing to toggle.
-- **Streak-10 RSAF salute** — hold a 10-streak and a low formation pass roars over the bay in your honour.
+### 🌆 Neon Hong Kong World
+- A procedurally streaming skyline of neon-windowed towers alongside a road that curves and hill-rolls continuously
+- Glowing pylons, color-cycling arches and lane dashes stream past in sync with the road
+- Warm sunset-to-purple sky gradient over the city
 
 ### 🎮 Built for Desktop + Mobile
-- Keyboard controls (arrows / WASD)
-- Mobile joystick
-- Mobile D-pad alternative
-- First-time onboarding for younger kids
-- Pause / resume from anywhere
+- Keyboard controls (arrows or `A` / `D`)
+- On-screen steering buttons on touch devices (auto-hidden when a mouse is detected)
+- Mute toggle for the procedural sound effects
 
-### 🚀 Progression & Unlocks
-- High-score persistence (localStorage, no signup)
-- **Sunset Mode** unlocks at 400 points, **Night Flight** at 700 — each with a cinematic celebration
-- Streak milestones with visual rewards
-- Score sharing (Web Share API, with clipboard fallback)
-
----
-
-## 🧮 Math Levels
-
-| Level      | Range / Operations                       | Best for              |
-|------------|------------------------------------------|-----------------------|
-| **Tiny**   | 1+1 → 5+5                                | 4–5 yrs, first-timers |
-| **Easy**   | Addition up to ~20                       | Lower primary         |
-| **Medium** | Addition + Subtraction up to ~50         | Mid primary           |
-| **Hard**   | Addition, Subtraction, Multiplication    | Upper primary and up  |
-
-> **Tiny** plays differently from the others — it's a forgiving, crash-proof **mission** (reach 10 correct to win), not a lives-based run. See **🐣 Tiny Mode** above.
+### 🚀 Progression
+- High-score and best-streak persistence via `localStorage` — no signup
+- Final score, best score and longest streak shown at race end, with a **NEW BEST!** callout
 
 ---
 
@@ -207,37 +78,30 @@ Top Sum is set over Marina Bay, and it leans all the way in:
 ### Desktop
 | Key | Action |
 |-----|--------|
-| `← ↑ → ↓` or `WASD` | Steer |
-| `M` | Toggle sound |
-| `C` | Toggle auto-center |
-| `T` | Cycle Day / Sunset / Night |
-| `X` | Cycle Speed Mode (Off → Fast → Faster) |
-| `Z` | Fire ZOOOM (when charged) |
-| `Esc` | Pause / resume |
+| `←` / `A` | Steer left |
+| `→` / `D` | Steer right |
 
 ### Mobile
-- **Joystick** (default) or **D-pad** — switch from the title screen, or via the icon column in-game
-- Tap the **ZOOOM bar** at the top to fire when it's full
-- Tap the **⚡ icon** to toggle Speed Mode
-- Tap ⏸ to pause
+- On-screen **◀** / **▶** buttons, bottom-left and bottom-right
+- Tap the speaker icon (top center) to mute/unmute
 
 ---
 
 ## 🧩 Tech Stack
 
-- Pure HTML / CSS / JavaScript
-- WebGL via [Three.js](https://threejs.org) r128, vendored locally — no CDN dependency, so the game keeps working even where CDNs are filtered
-- Fully client-side — no backend, no accounts, no personal-data tracking. Aggregate visit counts via Cloudflare Web Analytics (privacy-first: no cookies, no fingerprinting, no cross-site tracking)
-- Single-file architecture (`index.html`, plus the vendored `vendor/three.r128.min.js`)
+- Pure HTML / CSS / JavaScript, single file (`index.html`)
+- WebGL via [Three.js](https://threejs.org) r128, vendored locally (`vendor/three.r128.min.js`) — no CDN dependency
+- Fully client-side — no backend, no accounts, no data collection
+- Procedural audio via the Web Audio API — no sound assets
 
-Requires a modern browser with WebGL — Chrome, Safari, Firefox, or Edge on desktop or recent mobile.
+Requires a modern browser with WebGL — Chrome, Safari, Firefox, or Edge on desktop or recent mobile. Shows a friendly fallback message if WebGL isn't available.
 
 ### 📊 Analytics
 
-Privacy-first, in two independent tiers (details in [`analytics/`](analytics/README.md)):
+Optional and privacy-first, in two independent tiers (details in [`analytics/`](analytics/README.md)) — **neither is currently wired into `index.html`**, both are dormant scaffolding for future use:
 
-- **Traffic (active):** aggregate visit counts, referrers, and device/country breakdowns via Cloudflare Web Analytics — a single lightweight beacon. No cookies, no fingerprinting, no cross-site tracking, no IP or user-agent stored.
-- **Share/challenge funnel (off):** an optional Cloudflare Worker that counts anonymous funnel events, scores as coarse buckets only. Completely disabled until you deploy the Worker and paste its URL into `index.html`.
+- **Traffic (tier 1):** aggregate visit counts, referrers, and device/country breakdowns via Cloudflare Web Analytics — a single lightweight beacon, no cookies or fingerprinting.
+- **Gameplay funnel (tier 2):** an optional Cloudflare Worker + D1 database that would count anonymous gameplay events (race starts, race overs, score shares) as coarse buckets only.
 
 ---
 
@@ -246,8 +110,8 @@ Privacy-first, in two independent tiers (details in [`analytics/`](analytics/REA
 No build step, no dependencies. Just clone and open:
 
 ```bash
-git clone https://github.com/mli3w/top-sum.git
-cd top-sum
+git clone https://github.com/kevincgith/formulax.git
+cd formulax
 
 # macOS
 open index.html
@@ -263,16 +127,12 @@ That's it.
 
 ---
 
-## ⚖️ Disclaimer
+## 🍴 Fork History
 
-Top Sum is an independent fan-style aviation tribute. It is **not affiliated with, endorsed by, or sponsored by Paramount Pictures or the Top Gun franchise** — the visual style draws on the broader military-aviation design language only.
+Formula X started as a fork of [Top Sum](https://github.com/mli3w/top-sum), a math flight game over Marina Bay, Singapore. The game itself has since been rebuilt from scratch as an unrelated Hong Kong driving game — see [CHANGELOG.md](CHANGELOG.md) for the inherited version history from before the fork.
 
 ---
 
 ## 📜 License
 
-[MIT](LICENSE) — fork it, remix it, build on it. If you make something fun for your own kids with it, that would make my day.
-
----
-
-## ❤️ Made with love for my kids
+[MIT](LICENSE) — fork it, remix it, build on it.

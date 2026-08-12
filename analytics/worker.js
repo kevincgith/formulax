@@ -1,7 +1,7 @@
 /**
- * Top Sum analytics Worker — write-only event counter for the share/challenge funnel.
+ * Formula X analytics Worker — write-only event counter for gameplay funnel events.
  *
- * POST /e  body: {"e":"challenge_open","l":2,"s":350,"c":1}
+ * POST /e  body: {"e":"game_over","l":2,"s":350}
  *   e — event name (must be in EVENTS)
  *   l — level 1-4 (optional)
  *   s — score bucket (optional, client pre-rounds to nearest 50)
@@ -12,13 +12,10 @@
  */
 
 const EVENTS = new Set([
-  'game_start', 'game_over',
-  'share_score', 'challenge_share',
-  'challenge_open', 'challenge_accept', 'challenge_skip',
-  'zoom_fired'
+  'game_start', 'game_over', 'share_score'
 ]);
 
-const ORIGIN = 'https://mli3w.github.io';
+const ORIGIN = 'https://kevincgith.github.io';
 
 const CORS = {
   'Access-Control-Allow-Origin': ORIGIN,
