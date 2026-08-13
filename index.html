@@ -279,10 +279,6 @@
     var gold = new THREE.MeshStandardMaterial({ color: 0xffcf4d, metalness: .8, roughness: .25 });
     var cyan = new THREE.MeshStandardMaterial({ color: 0x33f0ff, emissive: 0x1fd6ff, emissiveIntensity: 1.1 });
 
-    // underglow
-    var glowP = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 5.2), new THREE.MeshBasicMaterial({ color: 0x33f0ff, transparent: true, opacity: .5 }));
-    glowP.rotation.x = -Math.PI / 2; glowP.position.y = 0.04; g.add(glowP);
-
     // monocoque (tapered: narrow front box + wider rear box)
     var front = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 2.2), black); front.position.set(0, 0.55, -1.0); g.add(front);
     var rear = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.5, 2.4), black); rear.position.set(0, 0.6, 1.0); g.add(rear);
@@ -313,8 +309,7 @@
     var rw2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.45), red); rw2.position.set(0, 1.15, 2.5); g.add(rw2);
     [-0.55, 0.55].forEach(function (sx) { var sup = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.75, 0.15), black); sup.position.set(sx, 1.0, 2.4); g.add(sup); });
     [-1.0, 1.0].forEach(function (sx) { var ep = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.7), gold); ep.position.set(sx, 1.25, 2.4); g.add(ep); });
-    // diffuser + exhaust glow
-    var diff = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.4), cyan); diff.position.set(0, 0.4, 2.35); g.add(diff);
+    // exhaust glow
     var exhaust = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffa64d, emissive: 0xff7a1f, emissiveIntensity: 1.3 })); exhaust.position.set(0, 0.72, 2.5); g.add(exhaust);
 
     // wheels (rear bigger) with glowing rims
